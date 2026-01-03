@@ -123,6 +123,13 @@ include_directories(
 # include
   ${catkin_INCLUDE_DIRS}
 )
+add_executable(motion_planning_node motion_planning_pkg/motion_planning_node.cpp)
+target_link_libraries(motion_planning_node ${catkin_LIBRARIES})
+add_dependencies(motion_planning_node ${catkin_EXPORTED_TARGETS})
+
+add_executable(task_planning_node task_planning_pkg/task_planning_node.cpp)
+target_link_libraries(task_planning_node ${catkin_LIBRARIES})
+add_dependencies(task_planning_node ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
