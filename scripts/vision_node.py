@@ -1,88 +1,45 @@
 #!/usr/bin/env python3
 
 import rospy
-import numpy as np
+import cv2
+from cv_bridge import CvBridge
+from sensor_msgs.msg import Image
 
-from sensor_msgs.msg import PointCloud2
-import sensor_msgs.point_cloud2 as pc2
-from visualization_msgs.msg import Marker
-from geometry_msgs.msg import Point
+YOLO_W = 640
+YOLO_H = 640
 
-# ---------------- CONFIG ----------------
-TABLE_Z = 0.82
-Z_TOL = 0.03   # 3 cm sopra il tavolo
+class VisionNode:
 
-# ---------------- GLOBALS ----------------
-pub_marker = None
+    def __init__(self):
+        rospy.init_node("vision_node")
+        rospy.loginfo("Vision node (RGB) started")
 
+        self.bridge = CvBridge()
 
-def cloud_callback(msg):
-    rospy.loginfo_throttle(2.0, "PointCloud received")
+        rospy.Subscriber(
+            "/ur5/zed_node/left/image_rect_color",
+            Image,
+            self.image_callback,
+            queue_size=1
+        )
 
-    points = []
-    for p in pc2.read_points(msg, field_names=("x", "y", "z"), skip_nans=True):
-        x, y, z = p
-        if abs(z - TABLE_Z) < Z_TOL:
-            points.append([x, y, z])
+    def image_callback(self, msg):
+        try:
+            cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
+        except Exception as e:
+            rospy.logerr(e)
+            return
 
-    rospy.loginfo_throttle(2.0, f"Filtered points: {len(points)}")
+        h, w, _ = cv_image.shape
+        rospy.loginfo_throttle(2.0, f"Original image size: {w}x{h}")
 
-    if len(points) == 0:
-        return
+        resized = cv2.resize(cv_image, (YOLO_W, YOLO_H))
+        rospy.loginfo_throttle(2.0, f"Resized to YOLO: {YOLO_W}x{YOLO_H}")
 
-    pts = np.array(points)
-    centroid = np.mean(pts, axis=0)
-
-    publish_marker(centroid)
-
-
-def publish_marker(pos):
-    marker = Marker()
-    marker.header.frame_id = "world"
-    marker.header.stamp = rospy.Time.now()
-    marker.ns = "vision"
-    marker.id = 0
-    marker.type = Marker.SPHERE
-    marker.action = Marker.ADD
-
-    marker.pose.position.x = pos[0]
-    marker.pose.position.y = pos[1]
-    marker.pose.position.z = pos[2]
-    marker.pose.orientation.w = 1.0
-
-    marker.scale.x = 0.05
-    marker.scale.y = 0.05
-    marker.scale.z = 0.05
-
-    marker.color.r = 0.0
-    marker.color.g = 0.0
-    marker.color.b = 1.0
-    marker.color.a = 1.0
-
-    pub_marker.publish(marker)
-
-
-def main():
-    global pub_marker
-
-    rospy.init_node("vision_node")
-    rospy.loginfo("Vision node started")
-
-    rospy.Subscriber(
-        "/ur5/zed_node/point_cloud/cloud_registered",
-        PointCloud2,
-        cloud_callback,
-        queue_size=1
-    )
-
-    pub_marker = rospy.Publisher(
-        "/vision/centroid",
-        Marker,
-        queue_size=1
-    )
-
-    rospy.spin()
-
+        # SOLO DEBUG: mostra immagine
+        cv2.imshow("ZED RGB (YOLO input)", resized)
+        cv2.waitKey(1)
 
 if __name__ == "__main__":
-    main()
+    VisionNode()
+    rospy.spin()
