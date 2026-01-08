@@ -24,7 +24,7 @@ import tf.transformations as tft
 # CONFIG
 # --------------------------------------------------
 
-N_BLOCKS = 5
+N_BLOCKS = 4
 MIN_DIST = 0.07          # 7 cm tra i centri
 MARGIN = 0.02            # margine dai bordi/parete (6 cm)
 
