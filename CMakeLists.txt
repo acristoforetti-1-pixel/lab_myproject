@@ -8,16 +8,14 @@ project(lab_myproject)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  roscpp
-  geometry_msgs
-  rospy
+   roscpp
   sensor_msgs
+  geometry_msgs
   std_msgs
-  tf
-  tf2_ros
-  gazebo_msgs
   tf2
   tf2_geometry_msgs
+  kdl_parser
+  ros_impedance_controller
 )
 
 ## System dependencies are found with CMake's conventions
