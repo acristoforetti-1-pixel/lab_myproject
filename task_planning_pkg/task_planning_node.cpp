@@ -3,11 +3,14 @@ source ~/ros_ws/devel/setup.bash
 rosrun lab_myproject motion_planning_node
 
 source ~/ros_ws/devel/setup.bash
-rosrun lab_myproject pick_place_ik \
-  _object_pose_topic:=/vision/object_pose \     //dipende da Ale che fa
+rosrun lab_myproject task_planning_node \
+  _object_pose_topic:=/vision/object_pose \
   _gripper_service:=/move_gripper \
-  _drop_x:=0.40 _drop_y:=0.00 _drop_z:=0.05 \
+  _drop_x:=0.40 _drop_y:=0.00 _drop_z:=0.10 \
   _gripper_open_diameter:=85.0 _gripper_close_diameter:=20.0
+
+# (topic vision dipende da Ale)
+
 
 source ~/ros_ws/devel/setup.bash
 export GAZEBO_MODEL_PATH=$GAZEBO_MODEL_PATH:/root/ros_ws/src/lab_myproject/models
@@ -16,7 +19,10 @@ rosrun lab_myproject spawn_random_blocks.py
 source ~/ros_ws/devel/setup.bash
 rosrun <pacchetto_vision> <nodo_vision>  anche qua dipende da Ale
 */
+
 #include <ros/ros.h>
+#include <yaml-cpp/yaml.h>
+#include <ros/package.h>
 
 #include <sensor_msgs/JointState.h>
 #include <geometry_msgs/PoseStamped.h>
@@ -36,6 +42,7 @@ rosrun <pacchetto_vision> <nodo_vision>  anche qua dipende da Ale
 
 #include <ros_impedance_controller/generic_float.h>
 
+#include <map>
 #include <mutex>
 #include <vector>
 #include <string>
@@ -46,6 +53,11 @@ class PickPlaceIK {
 public:
   PickPlaceIK() : have_js_(false), have_obj_(false), ack_(false) {
     ros::NodeHandle nh, pnh("~");
+
+	// --- Joint limits YAML path
+	std::string ur_pkg = ros::package::getPath("ur_description");
+	joint_limits_yaml_ = ur_pkg + "/config/ur5e/joint_limits.yaml";
+
 
     // --- Topics (match your existing nodes by default)
     pnh.param<std::string>("joint_states_topic", js_topic_, "/ur5/joint_states");
@@ -58,7 +70,7 @@ public:
 
     // --- IK chain
     pnh.param<std::string>("base_link", base_link_, "base_link");
-    pnh.param<std::string>("ee_link", ee_link_, "wrist_3_link"); // adjust if needed
+    pnh.param<std::string>("ee_link", ee_link_, "tool0_without_gripper"); // adjust if needed
     pnh.param<std::string>("robot_description_param", robot_desc_param_, "/robot_description");
 
     // --- Timing / behavior
@@ -205,45 +217,100 @@ private:
     have_obj_ = true;
   }
 
-  // ------------------ KDL init ------------------
-  bool initKDL() {
-    ros::NodeHandle nh;
-    std::string urdf;
-    if (!nh.getParam(robot_desc_param_, urdf)) {
-      ROS_ERROR("Param %s not found.", robot_desc_param_.c_str());
-      return false;
-    }
+bool loadJointLimitsFromYaml(
+    const std::string& path,
+    std::map<std::string, std::pair<double,double>>& lim_out)
+{
+  try {
+    YAML::Node root = YAML::LoadFile(path);
+    auto jl = root["joint_limits"];
+    if (!jl) return false;
 
-    KDL::Tree tree;
-    if (!kdl_parser::treeFromString(urdf, tree)) {
-      ROS_ERROR("Failed to parse URDF into KDL tree.");
-      return false;
-    }
+    auto read = [&](const std::string& key) {
+      return std::make_pair(
+        jl[key]["min_position"].as<double>(),
+        jl[key]["max_position"].as<double>());
+    };
 
-    if (!tree.getChain(base_link_, ee_link_, chain_)) {
-      ROS_ERROR("Failed to get KDL chain from %s to %s", base_link_.c_str(), ee_link_.c_str());
-      return false;
-    }
+    lim_out["shoulder_pan_joint"]  = read("shoulder_pan");
+    lim_out["shoulder_lift_joint"] = read("shoulder_lift");
+    lim_out["elbow_joint"]         = read("elbow_joint");
+    lim_out["wrist_1_joint"]       = read("wrist_1");
+    lim_out["wrist_2_joint"]       = read("wrist_2");
+    lim_out["wrist_3_joint"]       = read("wrist_3");
 
-    const unsigned int nj = chain_.getNrOfJoints();
-    if (nj < 6) {
-      ROS_ERROR("KDL chain has %u joints (too few).", nj);
-      return false;
-    }
-
-    // Joint limits: rough defaults. Better: read real limits from URDF.
-    q_min_ = KDL::JntArray(nj);
-    q_max_ = KDL::JntArray(nj);
-    for (unsigned int i = 0; i < nj; ++i) {
-      q_min_(i) = -2.0 * M_PI;
-      q_max_(i) =  2.0 * M_PI;
-    }
-
-    fk_.reset(new KDL::ChainFkSolverPos_recursive(chain_));
-    ik_vel_.reset(new KDL::ChainIkSolverVel_pinv(chain_));
-    ik_pos_.reset(new KDL::ChainIkSolverPos_NR_JL(chain_, q_min_, q_max_, *fk_, *ik_vel_, 200, 1e-5));
     return true;
   }
+  catch (const std::exception& e) {
+    ROS_ERROR("Joint limit YAML error: %s", e.what());
+    return false;
+  }
+}
+
+
+
+  // ------------------ KDL init ------------------
+  bool initKDL() {
+  ros::NodeHandle nh;
+  std::string urdf;
+  if (!nh.getParam(robot_desc_param_, urdf)) {
+    ROS_ERROR("Param %s not found.", robot_desc_param_.c_str());
+    return false;
+  }
+
+  KDL::Tree tree;
+  if (!kdl_parser::treeFromString(urdf, tree)) {
+    ROS_ERROR("Failed to parse URDF into KDL tree.");
+    return false;
+  }
+
+  if (!tree.getChain(base_link_, ee_link_, chain_)) {
+    ROS_ERROR("Failed to get KDL chain from %s to %s", base_link_.c_str(), ee_link_.c_str());
+    return false;
+  }
+
+  const unsigned int nj = chain_.getNrOfJoints();
+  if (nj < 6) {
+    ROS_ERROR("KDL chain has %u joints (too few).", nj);
+    return false;
+  }
+
+  // Load joint limits from YAML
+  std::map<std::string, std::pair<double,double>> lim;
+  if (!loadJointLimitsFromYaml(joint_limits_yaml_, lim)) {
+    ROS_ERROR("Failed to load joint limits from %s", joint_limits_yaml_.c_str());
+    return false;
+  }
+
+  q_min_ = KDL::JntArray(nj);
+  q_max_ = KDL::JntArray(nj);
+
+  unsigned int j = 0;
+  for (unsigned int s = 0; s < chain_.getNrOfSegments(); ++s) {
+    const KDL::Joint& kj = chain_.getSegment(s).getJoint();
+    if (kj.getType() == KDL::Joint::None) continue;
+
+    auto it = lim.find(kj.getName());
+    if (it != lim.end()) {
+      q_min_(j) = it->second.first;
+      q_max_(j) = it->second.second;
+      ROS_INFO("Limit %s: [%.3f, %.3f]", kj.getName().c_str(), q_min_(j), q_max_(j));
+    } else {
+      q_min_(j) = -2.0 * M_PI;
+      q_max_(j) =  2.0 * M_PI;
+      ROS_WARN("No YAML limit for %s, using +/-2pi", kj.getName().c_str());
+    }
+
+    j++;
+    if (j >= nj) break;
+  }
+
+  fk_.reset(new KDL::ChainFkSolverPos_recursive(chain_));
+  ik_vel_.reset(new KDL::ChainIkSolverVel_pinv(chain_));
+  ik_pos_.reset(new KDL::ChainIkSolverPos_NR_JL(chain_, q_min_, q_max_, *fk_, *ik_vel_, 200, 1e-5));
+  return true;
+}
+
 
   // ------------------ IK solve ------------------
   bool solveIK(const geometry_msgs::Pose& target_pose,
@@ -423,7 +490,7 @@ private:
 
   // ------------------ Members ------------------
   std::mutex mtx_;
-
+  std::string joint_limits_yaml_;
   // topics/params
   std::string js_topic_, target_topic_, ack_topic_;
   std::string obj_pose_topic_, obj_rpy_topic_;

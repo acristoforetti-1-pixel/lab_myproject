@@ -18,6 +18,7 @@ find_package(catkin REQUIRED COMPONENTS
   ros_impedance_controller
 )
 
+
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
@@ -128,7 +129,10 @@ target_link_libraries(motion_planning_node ${catkin_LIBRARIES})
 add_dependencies(motion_planning_node ${catkin_EXPORTED_TARGETS})
 
 add_executable(task_planning_node task_planning_pkg/task_planning_node.cpp)
-target_link_libraries(task_planning_node ${catkin_LIBRARIES})
+target_link_libraries(task_planning_node
+  ${catkin_LIBRARIES}
+  yaml-cpp
+)
 add_dependencies(task_planning_node ${catkin_EXPORTED_TARGETS})
 
 

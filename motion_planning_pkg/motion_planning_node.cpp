@@ -38,7 +38,7 @@ public:
   }
 
   void spin() {
-    ros::Rate rate(500);
+    ros::Rate rate(200);
     while (ros::ok()) {
       ros::spinOnce();
       if (executing_) step();
@@ -103,7 +103,9 @@ private:
 
     q0_ = q_;
     for (int i = 0; i < 6; ++i) qf_[i] = msg.data[i];
-
+    
+	if (executing_) ROS_WARN("New target received while executing: restarting trajectory.");
+	publishAck(false);
     t_start_ = ros::Time::now();
     executing_ = true;
   }
