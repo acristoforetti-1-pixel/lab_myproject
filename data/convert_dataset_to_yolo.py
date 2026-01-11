@@ -1,108 +1,107 @@
 import os
 import json
-import cv2
+import shutil
+from PIL import Image
 import random
 
 # ---------------- CONFIG ----------------
-SRC_ROOT = "assign1"
-OUT_ROOT = "yolo_dataset"
-TRAIN_SPLIT = 0.8
+classes = [
+    "X1-Y1-Z2",
+    "X1-Y2-Z1",
+    "X1-Y2-Z2",
+    "X1-Y2-Z2-CHAMFER",
+    "X1-Y2-Z2-TWINFILLET",
+    "X1-Y3-Z2",
+    "X1-Y3-Z2-FILLET",
+    "X1-Y4-Z1",
+    "X1-Y4-Z2",
+    "X2-Y2-Z2",
+    "X2-Y2-Z2-FILLET"
+]
 
-IMG_OUT_TRAIN = os.path.join(OUT_ROOT, "images/train")
-IMG_OUT_VAL   = os.path.join(OUT_ROOT, "images/val")
-LBL_OUT_TRAIN = os.path.join(OUT_ROOT, "labels/train")
-LBL_OUT_VAL   = os.path.join(OUT_ROOT, "labels/val")
-
-os.makedirs(IMG_OUT_TRAIN, exist_ok=True)
-os.makedirs(IMG_OUT_VAL, exist_ok=True)
-os.makedirs(LBL_OUT_TRAIN, exist_ok=True)
-os.makedirs(LBL_OUT_VAL, exist_ok=True)
-
-# ----------------------------------------
-
-def convert_bbox(bbox, w, h):
-    xmin, ymin, xmax, ymax = bbox
-    x = ((xmin + xmax) / 2) / w
-    y = ((ymin + ymax) / 2) / h
-    bw = (xmax - xmin) / w
-    bh = (ymax - ymin) / h
-    return x, y, bw, bh
-
-# raccogli classi
-classes = set()
-samples = []
-
-for scene in os.listdir(SRC_ROOT):
-    scene_path = os.path.join(SRC_ROOT, scene)
-    if not os.path.isdir(scene_path):
-        continue
-
-    for f in os.listdir(scene_path):
-        if f.endswith(".json"):
-            samples.append((scene_path, f))
-            with open(os.path.join(scene_path, f)) as jf:
-                data = json.load(jf)
-                for obj in data.values():
-                    classes.add(obj["y"])
-
-classes = sorted(list(classes))
 class_to_id = {c: i for i, c in enumerate(classes)}
 
-print("Classes:", class_to_id)
+OUT = "yolo_dataset"
+IMG_DIR = os.path.join(OUT, "images")
+LBL_DIR = os.path.join(OUT, "labels")
 
-random.shuffle(samples)
-split = int(len(samples) * TRAIN_SPLIT)
-train_samples = samples[:split]
-val_samples = samples[split:]
+os.makedirs(IMG_DIR, exist_ok=True)
+os.makedirs(LBL_DIR, exist_ok=True)
 
-def process(samples, img_out, lbl_out):
-    for scene_path, json_file in samples:
-        idx = json_file.replace(".json", "")
-        img_file = idx + ".jpeg"
+samples = []
 
-        img_path = os.path.join(scene_path, img_file)
-        if not os.path.exists(img_path):
+# ---------------- CONVERT ----------------
+for assign in ["assign1", "assign2", "assign3"]:
+    if not os.path.exists(assign):
+        continue
+
+    for scene in os.listdir(assign):
+        scene_path = os.path.join(assign, scene)
+        if not os.path.isdir(scene_path):
             continue
 
-        img = cv2.imread(img_path)
-        h, w, _ = img.shape
+        for view in range(10):
+            img_path = os.path.join(scene_path, f"view={view}_bbox.jpeg")
+            json_path = os.path.join(scene_path, f"view={view}.json")
 
-        label_lines = []
+            if not os.path.exists(img_path) or not os.path.exists(json_path):
+                continue
 
-        with open(os.path.join(scene_path, json_file)) as jf:
-            data = json.load(jf)
+            with open(json_path) as f:
+                data = json.load(f)
 
-        for obj in data.values():
-            cls = obj["y"]
-            bbox = obj["bbox"]
+            img = Image.open(img_path)
+            W, H = img.size
 
-            if bbox[1] > bbox[3]:
-                bbox[1], bbox[3] = bbox[3], bbox[1]
+            labels = []
 
-            cid = class_to_id[cls]
-            x, y, bw, bh = convert_bbox(bbox, w, h)
+            for obj in data.values():
+                if "bbox" not in obj or "y" not in obj:
+                    continue
 
-            label_lines.append(f"{cid} {x:.6f} {y:.6f} {bw:.6f} {bh:.6f}")
+                cls = obj["y"]
+                if cls not in class_to_id:
+                    continue
 
-        out_name = f"{scene_path.split('/')[-1]}_{idx}"
-        cv2.imwrite(os.path.join(img_out, out_name + ".jpg"), img)
+                x1, y1, x2, y2 = obj["bbox"]
 
-        with open(os.path.join(lbl_out, out_name + ".txt"), "w") as lf:
-            lf.write("\n".join(label_lines))
+                bw = (x2 - x1) / W
+                bh = (y2 - y1) / H
+                cx = ((x1 + x2) / 2) / W
+                cy = ((y1 + y2) / 2) / H
 
-process(train_samples, IMG_OUT_TRAIN, LBL_OUT_TRAIN)
-process(val_samples, IMG_OUT_VAL, LBL_OUT_VAL)
+                if bw <= 0 or bh <= 0:
+                    continue
 
-# dataset.yaml
-with open(os.path.join(OUT_ROOT, "dataset.yaml"), "w") as f:
-    f.write(f"""
-path: {os.path.abspath(OUT_ROOT)}
-train: images/train
-val: images/val
+                labels.append(
+                    f"{class_to_id[cls]} {cx:.6f} {cy:.6f} {bw:.6f} {bh:.6f}"
+                )
 
-names:
-""")
-    for c in classes:
-        f.write(f"  - {c}\n")
+            if not labels:
+                continue
 
-print("YOLO dataset created.")
+            name = f"{assign}_{scene}_view{view}"
+            shutil.copy(img_path, os.path.join(IMG_DIR, name + ".jpg"))
+
+            with open(os.path.join(LBL_DIR, name + ".txt"), "w") as f:
+                f.write("\n".join(labels))
+
+            samples.append(name)
+
+# ---------------- SPLIT ----------------
+random.shuffle(samples)
+split = int(0.8 * len(samples))
+
+for s in samples[:split]:
+    os.makedirs(f"{OUT}/images/train", exist_ok=True)
+    os.makedirs(f"{OUT}/labels/train", exist_ok=True)
+    shutil.move(f"{IMG_DIR}/{s}.jpg", f"{OUT}/images/train/{s}.jpg")
+    shutil.move(f"{LBL_DIR}/{s}.txt", f"{OUT}/labels/train/{s}.txt")
+
+for s in samples[split:]:
+    os.makedirs(f"{OUT}/images/val", exist_ok=True)
+    os.makedirs(f"{OUT}/labels/val", exist_ok=True)
+    shutil.move(f"{IMG_DIR}/{s}.jpg", f"{OUT}/images/val/{s}.jpg")
+    shutil.move(f"{LBL_DIR}/{s}.txt", f"{OUT}/labels/val/{s}.txt")
+
+print("✅ YOLO dataset ready")
