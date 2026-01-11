@@ -9,13 +9,15 @@ project(lab_myproject)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
    roscpp
-  geometry_msgs
-  rospy
   sensor_msgs
+  geometry_msgs
   std_msgs
-  tf
-  tf2_ros
+  tf2
+  tf2_geometry_msgs
+  kdl_parser
+  ros_impedance_controller
 )
+
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -107,10 +109,9 @@ find_package(catkin REQUIRED COMPONENTS
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES lab_myproject
-#  CATKIN_DEPENDS  roscpp geometry_msgs rospy sensor_msgs std_msgs tf tf2_ros
-#  DEPENDS system_lib
+  CATKIN_DEPENDS
+    roscpp geometry_msgs rospy sensor_msgs std_msgs tf tf2_ros
+    gazebo_msgs tf2 tf2_geometry_msgs
 )
 
 ###########
@@ -128,8 +129,12 @@ target_link_libraries(motion_planning_node ${catkin_LIBRARIES})
 add_dependencies(motion_planning_node ${catkin_EXPORTED_TARGETS})
 
 add_executable(task_planning_node task_planning_pkg/task_planning_node.cpp)
-target_link_libraries(task_planning_node ${catkin_LIBRARIES})
+target_link_libraries(task_planning_node
+  ${catkin_LIBRARIES}
+  yaml-cpp
+)
 add_dependencies(task_planning_node ${catkin_EXPORTED_TARGETS})
+
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
@@ -164,6 +169,12 @@ add_dependencies(task_planning_node ${catkin_EXPORTED_TARGETS})
 #############
 ## Install ##
 #############
+
+
+catkin_install_python(PROGRAMS
+  scripts/spawn_random_blocks.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
 # all install targets should use catkin DESTINATION variables
 # See http://ros.org/doc/api/catkin/html/adv_user_guide/variables.html

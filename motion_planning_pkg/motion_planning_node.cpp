@@ -2,34 +2,43 @@
 #include <sensor_msgs/JointState.h>
 #include <std_msgs/Float64MultiArray.h>
 #include <std_msgs/Bool.h>
+
 #include <mutex>
-#include <algorithm>
 #include <vector>
 #include <string>
-
+#include <algorithm>
 
 class MotionPlanningNode {
 public:
-  MotionPlanningNode() : have_map_(false), have_js_(false), executing_(false), T_(3.0) {
+  MotionPlanningNode() : have_map_(false), have_js_(false), executing_(false) {
     ros::NodeHandle nh, pnh("~");
 
-    pnh.param("duration", T_, 3.0);  // durata traiettoria [s]
+    pnh.param("duration", T_, 3.0);
 
-    sub_js_ = nh.subscribe("/ur5/joint_states", 1, &MotionPlanningNode::jsCb, this);
-    sub_target_ = nh.subscribe("/ur5/joint_target", 1, &MotionPlanningNode::targetCb, this);
+    pnh.param<std::string>("joint_states_topic", js_topic_, "/ur5/joint_states");
+    pnh.param<std::string>("target_topic", target_topic_, "/ur5/joint_target");
+    pnh.param<std::string>("command_topic", cmd_topic_, "/ur5/joint_group_pos_controller/command");
+    pnh.param<std::string>("ack_topic", ack_topic_, "/acknowledgement");
 
-    pub_cmd_ = nh.advertise<std_msgs::Float64MultiArray>(
-        "/ur5/joint_group_pos_controller/command", 1);
+    sub_js_ = nh.subscribe(js_topic_, 1, &MotionPlanningNode::jsCb, this);
+    sub_target_ = nh.subscribe(target_topic_, 1, &MotionPlanningNode::targetCb, this);
 
-    pub_ack_ = nh.advertise<std_msgs::Bool>("/acknowledgement", 1);
+    pub_cmd_ = nh.advertise<std_msgs::Float64MultiArray>(cmd_topic_, 1);
+    pub_ack_ = nh.advertise<std_msgs::Bool>(ack_topic_, 1);
 
     q_.assign(6, 0.0);
     q0_.assign(6, 0.0);
     qf_.assign(6, 0.0);
+
+    ROS_INFO("MotionPlanningNode:");
+    ROS_INFO("  js:  %s", js_topic_.c_str());
+    ROS_INFO("  tgt: %s", target_topic_.c_str());
+    ROS_INFO("  cmd: %s", cmd_topic_.c_str());
+    ROS_INFO("  ack: %s", ack_topic_.c_str());
   }
 
   void spin() {
-    ros::Rate rate(1000); // 1 kHz
+    ros::Rate rate(200);
     while (ros::ok()) {
       ros::spinOnce();
       if (executing_) step();
@@ -39,51 +48,46 @@ public:
 
 private:
   void jsCb(const sensor_msgs::JointState& msg) {
-  static const std::vector<std::string> ur5_names = {
-    "shoulder_pan_joint",
-    "shoulder_lift_joint",
-    "elbow_joint",
-    "wrist_1_joint",
-    "wrist_2_joint",
-    "wrist_3_joint"
-  };
+    static const std::vector<std::string> ur5_names = {
+      "shoulder_pan_joint",
+      "shoulder_lift_joint",
+      "elbow_joint",
+      "wrist_1_joint",
+      "wrist_2_joint",
+      "wrist_3_joint"
+    };
 
-  if (msg.name.size() != msg.position.size()) return;
+    if (msg.name.size() != msg.position.size()) return;
 
-  std::lock_guard<std::mutex> lk(mtx_);
+    std::lock_guard<std::mutex> lk(mtx_);
 
-  // Costruisci la mappa name->index una sola volta
-  if (!have_map_) {
-    idx_.assign(6, -1);
+    if (!have_map_) {
+      idx_.assign(6, -1);
 
-    for (int k = 0; k < 6; ++k) {
-      for (int i = 0; i < (int)msg.name.size(); ++i) {
-        if (msg.name[i] == ur5_names[k]) {
-          idx_[k] = i;
-          break;
+      for (int k = 0; k < 6; ++k) {
+        for (int i = 0; i < (int)msg.name.size(); ++i) {
+          if (msg.name[i] == ur5_names[k]) {
+            idx_[k] = i;
+            break;
+          }
         }
       }
+
+      bool ok = true;
+      for (int k = 0; k < 6; ++k) ok = ok && (idx_[k] >= 0);
+      if (!ok) {
+        ROS_ERROR("Some UR5 joints not found in joint_states. Names seen:");
+        for (auto& n : msg.name) ROS_ERROR("  %s", n.c_str());
+        return;
+      }
+
+      have_map_ = true;
+      ROS_INFO("Joint name->index map created.");
     }
 
-    bool ok = true;
-    for (int k = 0; k < 6; ++k) ok = ok && (idx_[k] >= 0);
-    if (!ok) {
-      ROS_ERROR("Some UR5 joints not found in /ur5/joint_states. Names seen:");
-      for (auto& n : msg.name) ROS_ERROR("  %s", n.c_str());
-      return;
-    }
-
-    have_map_ = true;
+    for (int k = 0; k < 6; ++k) q_[k] = msg.position[idx_[k]];
+    have_js_ = true;
   }
-
-  // Riordina q_ nel nostro ordine UR5
-  for (int k = 0; k < 6; ++k) {
-    q_[k] = msg.position[idx_[k]];
-  }
-
-  have_js_ = true;
-}
-
 
   void targetCb(const std_msgs::Float64MultiArray& msg) {
     if (msg.data.size() < 6) {
@@ -99,9 +103,17 @@ private:
 
     q0_ = q_;
     for (int i = 0; i < 6; ++i) qf_[i] = msg.data[i];
-
+    
+	if (executing_) ROS_WARN("New target received while executing: restarting trajectory.");
+	publishAck(false);
     t_start_ = ros::Time::now();
     executing_ = true;
+  }
+
+  static double clamp01(double x) {
+    if (x < 0.0) return 0.0;
+    if (x > 1.0) return 1.0;
+    return x;
   }
 
   void step() {
@@ -116,16 +128,11 @@ private:
       return;
     }
 
-    // cubic time scaling
-    double tau = t / T_;
-	if (tau < 0.0) tau = 0.0;
-	if (tau > 1.0) tau = 1.0;
+    const double tau = clamp01(t / T_);
     const double s = 3*tau*tau - 2*tau*tau*tau;
 
     std::vector<double> qd(6);
-    for (int i = 0; i < 6; ++i) {
-      qd[i] = q0_[i] + s * (qf_[i] - q0_[i]);
-    }
+    for (int i = 0; i < 6; ++i) qd[i] = q0_[i] + s*(qf_[i] - q0_[i]);
 
     publishCmd(qd);
   }
@@ -147,12 +154,14 @@ private:
   std::mutex mtx_;
 
   std::vector<double> q_, q0_, qf_;
-  bool have_js_;
   std::vector<int> idx_;
-  bool have_map_ = false;
+  bool have_map_;
+  bool have_js_;
   bool executing_;
   ros::Time t_start_;
   double T_;
+
+  std::string js_topic_, target_topic_, cmd_topic_, ack_topic_;
 };
 
 int main(int argc, char** argv) {
