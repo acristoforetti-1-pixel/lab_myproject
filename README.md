@@ -32,8 +32,8 @@ physics simulation with Gazebo
  spawn blocks:
  - source ~/ros_ws/devel/setup.bash
  - export GAZEBO_MODEL_PATH=$GAZEBO_MODEL_PATH:/root/ros_ws/src/lab_myproject/models
- - rosrun lab_myproject spawn_random_blocks.py
-
+ -  rosrun lab_myproject spawn_random_blocks.py
+   
  task planning:
 - source ~/ros_ws/devel/setup.bash
 - rosrun lab_myproject task_planning_node \
