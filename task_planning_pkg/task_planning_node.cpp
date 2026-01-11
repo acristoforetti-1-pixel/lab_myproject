@@ -71,7 +71,7 @@ public:
     // --- IK chain
     pnh.param<std::string>("base_link", base_link_, "base_link");
     pnh.param<std::string>("ee_link", ee_link_, "tool0_without_gripper"); // adjust if needed
-    pnh.param<std::string>("robot_description_param", robot_desc_param_, "/robot_description");
+    pnh.param<std::string>("robot_description_param", robot_desc_param_, "/ur5/robot_description");
 
     // --- Timing / behavior
     pnh.param("ack_timeout", ack_timeout_, 10.0);
