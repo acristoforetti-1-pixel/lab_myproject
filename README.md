@@ -29,16 +29,17 @@ physics simulation with Gazebo
   
   vision node......
   
- spawn blocks
+ spawn blocks:
  - source ~/ros_ws/devel/setup.bash
  - export GAZEBO_MODEL_PATH=$GAZEBO_MODEL_PATH:/root/ros_ws/src/lab_myproject/models
  - rosrun lab_myproject spawn_random_blocks.py
 
- task planning
+ task planning:
 - source ~/ros_ws/devel/setup.bash
 - rosrun lab_myproject task_planning_node \
   _object_pose_topic:=/vision/object_pose \
   _gripper_service:=/move_gripper \
   _drop_x:=0.40 _drop_y:=0.00 _drop_z:=0.05 \
   _gripper_open_diameter:=85.0 _gripper_close_diameter:=20.0
+  
  (topic vision depends, drops depend on where you want to drop blocks)
