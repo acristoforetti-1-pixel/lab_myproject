@@ -43,3 +43,31 @@ physics simulation with Gazebo
   _gripper_open_diameter:=85.0 _gripper_close_diameter:=20.0
   
  (topic vision depends, drops depend on where you want to drop blocks)
+
+
+## To Test Vision node
+
+U will need a minimum of 2 terminals:
+1. -> terminal 1
+2. -> terminal 2
+
+1.  cd ~/ros_ws
+    catkin_make (optional)
+    source devel/setup.bash
+  
+2.  cd ~/ros_ws
+    source devel/setup.bash
+
+1.  python3 -i src/locosim/robot_control/base_controllers/ur5_generic.py
+
+2.  rosrun lab_myproject spawn_random_blocks.py
+
+2.  rosrun lab_myproject perception_6d_node.py
+
+to see the prediction on RVIZ u will need to press:
+Add → Image
+Topic: /perception/debug/image_raw
+Transport hint: raw
+Queue size: 2
+
+3. rostopic list | grep detected_object_pose (if u want to see the classifications of the found objects)
