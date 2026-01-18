@@ -1,0 +1,79 @@
+<launch>
+
+  <!-- Robot state publisher -->
+  <node pkg="robot_state_publisher"
+        type="robot_state_publisher"
+        name="robot_state_publisher"
+        output="screen" />
+
+  <!-- MOTION PLANNING (controller bridge) -->
+  <node pkg="lab_myproject"
+        type="motion_planning_node"
+        name="motion_planning_node"
+        output="screen"
+        required="true">
+
+    <!-- più veloce -->
+    <param name="duration" value="1.0"/>
+    <param name="hand_duration" value="0.25"/>
+
+    <param name="joint_states_topic" value="/ur5/joint_states"/>
+    <param name="target_topic"       value="/ur5/joint_target"/>
+    <param name="command_topic"      value="/ur5/joint_group_pos_controller/command"/>
+    <param name="ack_topic"          value="/acknowledgement"/>
+
+    <!-- soft gripper safety + stabilizzazione -->
+    <param name="hand_min" value="-0.20"/>
+    <param name="hand_max" value="0.85"/>
+    <param name="hold_last_command" value="true"/>
+    <param name="hold_rate_hz" value="30.0"/>
+  </node>
+
+  <!-- TASK PLANNING (IK + pick/place) -->
+  <node pkg="lab_myproject"
+        type="task_planning_node"
+        name="task_planning_node"
+        output="screen">
+
+    <param name="joint_states_topic" value="/ur5/joint_states"/>
+    <param name="joint_target_topic" value="/ur5/joint_target"/>
+    <param name="ack_topic"          value="/acknowledgement"/>
+
+    <param name="object_rpy_topic"   value="/vision/object_rpy"/>
+    <param name="object_pose_topic"  value="/vision/object_pose"/>
+
+    <param name="base_link" value="base_link"/>
+    <param name="ee_link" value="tool0"/>
+    <param name="robot_description_param" value="/ur5/robot_description"/>
+
+    <param name="z_pre"   value="0.12"/>
+    <param name="z_grasp" value="-0.004"/>
+    <param name="z_lift"  value="0.20"/>
+
+    <param name="drop_x" value="0.40"/>
+    <param name="drop_y" value="0.35"/>
+    <param name="drop_z" value="-0.83"/>
+
+    <param name="place_pre_up" value="0.28"/>
+    <param name="safe_up_after_open" value="0.25"/>
+
+    <!-- soft gripper -->
+    <param name="hand_open" value="0.85"/>
+    <param name="hand_close" value="-0.17"/>
+    <param name="grasp_settle_s" value="0.55"/>
+
+    <!-- IK safety -->
+    <param name="ik_max_jump" value="2.5"/>
+    <param name="min_xy_radius" value="0.20"/>
+
+    <param name="table_z" value="-0.85"/>
+    <param name="z_clear" value="0.005"/>
+<param name="use_home_after_place" value="false"/>
+    <param name="ack_timeout" value="10.0"/>
+    <param name="fixed_roll"  value="3.1415926535"/>
+    <param name="fixed_pitch" value="0.0"/>
+
+    <param name="use_home_after_place" value="true"/>
+  </node>
+
+</launch>
