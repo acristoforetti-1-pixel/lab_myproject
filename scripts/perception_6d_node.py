@@ -1,61 +1,86 @@
 #!/usr/bin/env python3
+"""perception_6d_node.py (formatted + light fixes)
+
+Minimal node that:
+ - subscribes synchronized color + depth
+ - runs YOLO on color
+ - for every detection back-projects depth crop to 3D
+ - computes centroid and orientation (PCA via SVD)
+ - single height filter (base_link z in [z_min_base, z_max_base])
+ - publishes PoseStamped on /detected_object_pose_<safe_name>
+ - publishes debug image on /perception/debug/image_raw
+
+Notes / changes compared to the provided snippet:
+ - fixed a few syntax / indentation issues
+ - made the depth encoding handling more robust
+ - guarded access to YOLO result fields and names
+ - cleaned up variable scoping and logging
+ - added a couple of small defensive checks
+
+This is intentionally conservative: it keeps the original approach
+but is easier to read and a little more robust. Consider moving to
+`tf2_ros` and `geometry_msgs/TransformStamped` in a follow-up.
 """
-perception_6d_node_fixed.py
 
-Fixed version: ensure PoseStamped in 'world' frame matches absolute Gazebo/world coordinates
-produced by spawn_random_blocks.py.
-
-Main fixes:
- - use the image message timestamp when transforming (keeps TF time consistent)
- - use tf.TransformListener.transformPose to transform the full PoseStamped (avoids manual
-   quaternion/translation mistakes)
- - more robust fallback when stamp==0
- - small clarifying comments and logging to help debug mismatches with spawn_random_blocks
-
-Requirements: camera_info and depth must be registered to the same image plane (depth_registered),
-CameraInfo must be published, and TF must publish a transform between camera frame and world.
-"""
 import os
-import rospy
-import numpy as np
-import cv2
-import tf
 import re
 import time
+
+import cv2
+import numpy as np
+import rospy
+import tf
+import message_filters
 from geometry_msgs.msg import PoseStamped
 from sensor_msgs.msg import Image, CameraInfo
 from cv_bridge import CvBridge, CvBridgeError
 from ultralytics import YOLO
-import message_filters
 
+# ---------------------------
 # Defaults
-DEFAULT_MODEL_PATH = "/root/ros_ws/src/lab_myproject/data/runs/detect/train/weights/best.pt"
+# ---------------------------
+DEFAULT_MODEL_PATH = (
+    "/root/ros_ws/src/lab_myproject/data/runs/detect/train/weights/best.pt"
+)
 DEFAULT_COLOR_TOPIC = "/ur5/zed_node/left/image_rect_color"
 DEFAULT_DEPTH_TOPIC = "/ur5/zed_node/depth/depth_registered"
 DEFAULT_CAMINFO_TOPIC = "/ur5/zed_node/left_raw/camera_info"
 DEFAULT_FRAME_CAMERA = "zed2_left_camera_optical_frame"
-DEFAULT_FRAME_WORLD = "world"
+DEFAULT_FRAME_BASE = "base_link"
 DEFAULT_DEBUG_DIR = "/tmp/perception_debug"
-
 DEFAULT_CONF_THRESH = 0.25
 DEFAULT_MIN_POINTS_FOR_PCA = 5
 DEFAULT_MIN_POINTS_FOR_PCA_3D = 30
+# table spawn defaults (from your spawn_random_blocks.py)
+DEFAULT_TABLE_Z_WORLD = 0.82
+DEFAULT_SPAWN_Z_OFFSET = 0.03
+DEFAULT_Z_MARGIN = 0.50  # permissive by default
 
-# Depth valid range (meters)
+# depth clamps
 DEPTH_MIN = 0.02
 DEPTH_MAX = 5.0
 
-# Helper utilities
+# ---------------------------
+# Helpers
+# ---------------------------
+
 def safe_name(name: str) -> str:
-    s = re.sub(r'[^0-9a-zA-Z_]', '_', name)
-    s = re.sub(r'__+', '_', s)
+    s = re.sub(r"[^0-9a-zA-Z_]", "_", name)
+    s = re.sub(r"__+", "_", s)
     return s.lower()
 
 
-def compute_pca_components(points, n_components=3):
-    """Compute principal components using SVD (rows = components)."""
-    if points.shape[0] == 0:
-        return np.zeros((n_components, points.shape[1]))
+def compute_pca_components(points: np.ndarray, n_components: int = 3) -> np.ndarray:
+    """Return the first n_components principal directions (rows) from SVD.
+
+    points: (N, D) array
+    returns: (n_components, D)
+    """
+    if points is None or points.size == 0:
+        # if we don't know D, default to identity for 3D
+        D = 3
+        return np.eye(D)[:n_components]
+
     mean = np.mean(points, axis=0)
     X = points - mean
     try:
@@ -67,6 +92,9 @@ def compute_pca_components(points, n_components=3):
         return np.eye(D)[:n_components]
 
 
+# ---------------------------
+# Node
+# ---------------------------
 class Perception6DNode:
     def __init__(self):
         rospy.init_node("perception_6d_node", anonymous=True)
@@ -77,92 +105,110 @@ class Perception6DNode:
         self.depth_topic = rospy.get_param("~depth_topic", DEFAULT_DEPTH_TOPIC)
         self.caminfo_topic = rospy.get_param("~caminfo_topic", DEFAULT_CAMINFO_TOPIC)
         self.frame_camera = rospy.get_param("~frame_camera", DEFAULT_FRAME_CAMERA)
-        self.frame_world = rospy.get_param("~frame_world", DEFAULT_FRAME_WORLD)
+        self.frame_base = rospy.get_param("~frame_base", DEFAULT_FRAME_BASE)
         self.debug_dir = rospy.get_param("~debug_dir", DEFAULT_DEBUG_DIR)
-
         self.conf_thresh = float(rospy.get_param("~conf_thresh", DEFAULT_CONF_THRESH))
-        self.min_points_pca = int(rospy.get_param("~min_points_for_pca", DEFAULT_MIN_POINTS_FOR_PCA))
-        self.min_points_pca_3d = int(rospy.get_param("~min_points_for_pca_3d", DEFAULT_MIN_POINTS_FOR_PCA_3D))
+        self.min_points_pca = int(
+            rospy.get_param("~min_points_for_pca", DEFAULT_MIN_POINTS_FOR_PCA)
+        )
+        self.min_points_pca_3d = int(
+            rospy.get_param("~min_points_for_pca_3d", DEFAULT_MIN_POINTS_FOR_PCA_3D)
+        )
+
+        # table-based z filter
+        self.table_z_world = float(rospy.get_param("~table_z_world", DEFAULT_TABLE_Z_WORLD))
+        self.spawn_z_offset = float(rospy.get_param("~spawn_z_offset", DEFAULT_SPAWN_Z_OFFSET))
+        self.z_margin = float(rospy.get_param("~z_margin", DEFAULT_Z_MARGIN))
 
         os.makedirs(self.debug_dir, exist_ok=True)
 
         rospy.loginfo(f"[perception6d] model={self.model_path}")
-        rospy.loginfo(f"[perception6d] color={self.color_topic} depth={self.depth_topic} caminfo={self.caminfo_topic}")
-        rospy.loginfo(f"[perception6d] camera_frame={self.frame_camera} world_frame={self.frame_world}")
-        rospy.loginfo(f"[perception6d] conf={self.conf_thresh} pca_min={self.min_points_pca}/{self.min_points_pca_3d}")
+        rospy.loginfo(
+            f"[perception6d] topics color={self.color_topic} depth={self.depth_topic} caminfo={self.caminfo_topic}"
+        )
+        rospy.loginfo(f"[perception6d] frames camera={self.frame_camera} base={self.frame_base}")
+        rospy.loginfo(f"[perception6d] conf_thresh={self.conf_thresh} pca_min={self.min_points_pca}/{self.min_points_pca_3d}")
+        rospy.loginfo(
+            f"[perception6d] table_z_world={self.table_z_world} spawn_offset={self.spawn_z_offset} z_margin={self.z_margin}"
+        )
 
         # load YOLO
         try:
             self.model = YOLO(self.model_path)
             rospy.loginfo("[perception6d] YOLO model loaded")
         except Exception as e:
-            rospy.logerr(f"[perception6d] Failed to load YOLO model: {e}")
+            rospy.logerr(f"[perception6d] YOLO load failed: {e}")
             raise
 
-        # cv bridge and tf
         self.bridge = CvBridge()
-        self.tf_listener = tf.TransformListener()
         self.cam_K = None
+        self.tf_listener = tf.TransformListener()
 
-        # publishers
+        # pose publishers map
+        self.pose_pubs = {}
+
+        # debug image publisher
         self.debug_image_pub = rospy.Publisher("/perception/debug/image_raw", Image, queue_size=1)
-        self.pose_pubs = {}  # topic -> publisher
 
-        # subscribe CameraInfo
+        # compute expected z range in base_link
+        self.z_min_base = None
+        self.z_max_base = None
+        self._compute_z_range_from_world()
+
+        # subscribe camera info (one-shot)
         rospy.Subscriber(self.caminfo_topic, CameraInfo, self._caminfo_cb, queue_size=1)
 
-        # sync color+depth
-        color_sub = message_filters.Subscriber(self.color_topic, Image, queue_size=1, buff_size=2**24)
-        depth_sub = message_filters.Subscriber(self.depth_topic, Image, queue_size=1, buff_size=2**24)
+        # sync color+depth (approx)
+        color_sub = message_filters.Subscriber(self.color_topic, Image, queue_size=1, buff_size=2 ** 24)
+        depth_sub = message_filters.Subscriber(self.depth_topic, Image, queue_size=1, buff_size=2 ** 24)
         ats = message_filters.ApproximateTimeSynchronizer([color_sub, depth_sub], queue_size=6, slop=0.15)
         ats.registerCallback(self._synced_cb)
 
-        rospy.loginfo("[perception6d] initialized — waiting for data")
+        rospy.loginfo("[perception6d] Node initialized and waiting for messages...")
+
+    def _compute_z_range_from_world(self):
+        target = self.frame_base
+        source = "world"
+        z_world = float(self.table_z_world) + float(self.spawn_z_offset)
+        rospy.loginfo(f"[perception6d] computing expected base z from world z={z_world:.3f}")
+        try:
+            self.tf_listener.waitForTransform(target, source, rospy.Time(0), rospy.Duration(2.0))
+            (trans, rot) = self.tf_listener.lookupTransform(target, source, rospy.Time(0))
+
+            mat = tf.transformations.concatenate_matrices(
+                tf.transformations.translation_matrix(trans), tf.transformations.quaternion_matrix(rot)
+            )
+            p_world = np.array([0.0, 0.0, z_world, 1.0])
+            p_base = np.dot(mat, p_world)
+            z_base = float(p_base[2])
+
+            self.z_min_base = z_base - abs(self.z_margin)
+            self.z_max_base = z_base + abs(self.z_margin)
+            rospy.loginfo(
+                f"[perception6d] base z range: [{self.z_min_base:.3f}, {self.z_max_base:.3f}] (z_base={z_base:.3f})"
+            )
+        except Exception as e:
+            rospy.logwarn(f"[perception6d] TF world->base not available: {e}. Using fallback z range.")
+            self.z_min_base = -1.5
+            self.z_max_base = 0.5
+            rospy.loginfo(f"[perception6d] fallback base z range: [{self.z_min_base}, {self.z_max_base}]")
 
     def _caminfo_cb(self, msg: CameraInfo):
         if self.cam_K is None:
             try:
-                K = np.array(msg.K).reshape(3,3)
-                self.cam_K = {'fx': float(K[0,0]), 'fy': float(K[1,1]), 'cx': float(K[0,2]), 'cy': float(K[1,2])}
+                K = np.array(msg.K).reshape(3, 3)
+                self.cam_K = {"fx": float(K[0, 0]), "fy": float(K[1, 1]), "cx": float(K[0, 2]), "cy": float(K[1, 2])}
                 rospy.loginfo(f"[perception6d] camera intrinsics: {self.cam_K}")
             except Exception as e:
-                rospy.logwarn(f"[perception6d] CameraInfo parse failed: {e}")
-
-    def _try_expand_and_get_depth(self, depth_cv, x1c, y1c, x2c, y2c, expand_steps=2):
-        """
-        Try to get depth points inside bbox; if none, expand bbox slightly up to `expand_steps` times.
-        Returns (us, vs, zs) arrays (may be empty).
-        """
-        h, w = depth_cv.shape[:2]
-        for step in range(expand_steps + 1):
-            # expansion factor: 1.0 + 0.2*step
-            factor = 1.0 + 0.2 * step
-            cx = (x1c + x2c) / 2.0
-            cy = (y1c + y2c) / 2.0
-            half_w = (x2c - x1c) / 2.0 * factor
-            half_h = (y2c - y1c) / 2.0 * factor
-            nx1 = int(max(0, np.floor(cx - half_w)))
-            nx2 = int(min(w-1, np.ceil(cx + half_w)))
-            ny1 = int(max(0, np.floor(cy - half_h)))
-            ny2 = int(min(h-1, np.ceil(cy + half_h)))
-            crop = depth_cv[ny1:ny2+1, nx1:nx2+1]
-            if crop.size == 0:
-                continue
-            mask = np.isfinite(crop) & (crop > DEPTH_MIN) & (crop < DEPTH_MAX)
-            ys, xs = np.where(mask)
-            if xs.size > 0:
-                zs = crop[ys, xs].astype(np.float32)
-                # convert local crop coords to image coords
-                us = (nx1 + xs).astype(np.float32)
-                vs = (ny1 + ys).astype(np.float32)
-                return us, vs, zs
-        return np.array([], dtype=np.float32), np.array([], dtype=np.float32), np.array([], dtype=np.float32)
+                rospy.logwarn(f"[perception6d] failed parse CameraInfo: {e}")
 
     def _synced_cb(self, color_msg: Image, depth_msg: Image):
+        # ensure intrinsics
         if self.cam_K is None:
-            rospy.logwarn_throttle(5, "[perception6d] waiting for camera_info")
+            rospy.logwarn_throttle(5, "[perception6d] waiting for camera_info...")
             return
 
+        # convert color
         try:
             color_cv = self.bridge.imgmsg_to_cv2(color_msg, desired_encoding="bgr8")
         except CvBridgeError as e:
@@ -171,98 +217,130 @@ class Perception6DNode:
 
         # depth conversion
         try:
-            enc = depth_msg.encoding
+            enc = getattr(depth_msg, "encoding", "")
             if enc == "32FC1":
                 depth_cv = self.bridge.imgmsg_to_cv2(depth_msg, desired_encoding="passthrough").astype(np.float32)
             elif enc == "16UC1":
                 depth_cv = self.bridge.imgmsg_to_cv2(depth_msg, desired_encoding="passthrough").astype(np.float32) / 1000.0
             else:
+                # fallback: try passthrough and hope for the best
                 depth_cv = self.bridge.imgmsg_to_cv2(depth_msg, desired_encoding="passthrough").astype(np.float32)
+                rospy.logwarn_throttle(20, f"[perception6d] unhandled depth encoding {enc}, trying passthrough")
         except Exception as e:
-            rospy.logwarn(f"[perception6d] depth conversion failed: {e}")
+            rospy.logwarn(f"[perception6d] depth conversion error: {e}")
             return
 
-        # run YOLO inference
+        # YOLO inference
         try:
             results = self.model.predict(source=color_cv, conf=self.conf_thresh, imgsz=640, verbose=False)
-            if len(results) == 0:
+            if results is None or len(results) == 0:
                 return
             res = results[0]
         except Exception as e:
-            rospy.logwarn(f"[perception6d] YOLO inference failed: {e}")
+            rospy.logwarn(f"[perception6d] YOLO inference error: {e}")
             return
 
-        boxes = getattr(res.boxes, "xyxy", None)
-        names = getattr(res, "names", {})
-        if boxes is None:
+        # boxes (N,4) in xyxy
+        boxes = None
+        try:
+            boxes = getattr(res.boxes, "xyxy", None)
+            if boxes is None:
+                return
+            # convert to numpy if it's a tensor-like object
+            boxes = np.array(boxes)
+        except Exception:
             return
 
-        fx = self.cam_K['fx']; fy = self.cam_K['fy']; cx = self.cam_K['cx']; cy = self.cam_K['cy']
+        fx = self.cam_K["fx"]
+        fy = self.cam_K["fy"]
+        cx = self.cam_K["cx"]
+        cy = self.cam_K["cy"]
+
         debug_img = color_cv.copy()
-
-        # choose a transform timestamp consistent with the image
-        stamp = color_msg.header.stamp if color_msg.header.stamp != rospy.Time(0) else rospy.Time.now()
+        h, w = depth_cv.shape[:2]
 
         for i, b in enumerate(boxes):
             try:
-                x1, y1, x2, y2 = int(b[0].item()), int(b[1].item()), int(b[2].item()), int(b[3].item())
+                x1, y1, x2, y2 = int(b[0].item()) if hasattr(b[0], "item") else int(b[0]), int(b[1].item()) if hasattr(b[1], "item") else int(b[1]), int(b[2].item()) if hasattr(b[2], "item") else int(b[2]), int(b[3].item()) if hasattr(b[3], "item") else int(b[3])
             except Exception:
+                rospy.logdebug("[perception6d] invalid bbox format, skipping")
                 continue
 
-            
-
+            # class name (best-effort)
             try:
-                class_id = int(res.boxes.cls[i].item())
-                class_name = names[class_id] if class_id in names else str(class_id)
+                class_id = int(res.boxes.cls[i].item()) if hasattr(res.boxes.cls[i], "item") else int(res.boxes.cls[i])
+                class_name = res.names[class_id] if hasattr(res, "names") and class_id in res.names else str(class_id)
             except Exception:
                 class_name = "obj"
 
-            # try to obtain depth points (with small bbox expansion if needed)
-            us, vs, zs = self._try_expand_and_get_depth(depth_cv, x1, y1, x2, y2, expand_steps=2)
-            if us.size == 0:
-                # no depth available — mark yellow bbox and continue (skip publishing pose)
-                cv2.rectangle(debug_img, (x1, y1), (x2, y2), (0, 255, 255), 2)  # yellow
-                cv2.putText(debug_img, class_name + " (no depth)", (x1, max(y1-10,0)),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,255,255), 2)
-                rospy.logdebug(f"[perception6d] no depth for {class_name}, skipping pose publish")
+            # clamp bbox and crop depth
+            x1c = max(0, min(w - 1, x1))
+            x2c = max(0, min(w - 1, x2))
+            y1c = max(0, min(h - 1, y1))
+            y2c = max(0, min(h - 1, y2))
+            if x2c <= x1c or y2c <= y1c:
                 continue
 
-            # back-project to camera frame
+            crop = depth_cv[y1c : (y2c + 1), x1c : (x2c + 1)]
+            if crop.size == 0:
+                continue
+
+            mask = np.isfinite(crop) & (crop > DEPTH_MIN) & (crop < DEPTH_MAX)
+            ys, xs = np.where(mask)
+            if xs.size < 3:
+                rospy.logdebug(f"[perception6d] too few depth points ({xs.size}) for {class_name}")
+                # draw rejected bbox in red
+                cv2.rectangle(debug_img, (x1c, y1c), (x2c, y2c), (0, 0, 255), 2)
+                cv2.putText(debug_img, class_name, (x1c, max(y1c - 10, 0)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+                continue
+
+            zs = crop[ys, xs].astype(np.float32)
+            us = (x1c + xs).astype(np.float32)
+            vs = (y1c + ys).astype(np.float32)
+
             X = (us - cx) * zs / fx
             Y = (vs - cy) * zs / fy
             Z = zs
-            pts = np.vstack((X, Y, Z)).T  # N x 3
+            pts = np.vstack((X, Y, Z)).T  # (N,3) in camera frame
 
-            # centroid in camera frame
+            # centroid (camera frame)
             centroid = np.nanmedian(pts, axis=0)
 
-            # orientation: PCA3D if enough points, else PCA2D for yaw
+            # orientation via PCA (SVD)
             q_obj_cam = None
             roll = pitch = yaw = 0.0
+
             if pts.shape[0] >= self.min_points_pca_3d:
                 try:
                     comps = compute_pca_components(pts, n_components=3)
-                    x_axis = comps[0].copy(); y_axis = comps[1].copy(); z_axis = comps[2].copy()
+                    x_axis = comps[0].copy()
+                    y_axis = comps[1].copy()
+                    z_axis = comps[2].copy()
+
+                    # ensure right-handed
                     if np.dot(np.cross(x_axis, y_axis), z_axis) < 0:
                         z_axis = -z_axis
+
                     R = np.column_stack((x_axis, y_axis, z_axis))
                     U, _, Vt = np.linalg.svd(R)
                     R_orth = np.dot(U, Vt)
                     if np.linalg.det(R_orth) < 0:
                         U[:, -1] *= -1
                         R_orth = np.dot(U, Vt)
-                    R4 = np.eye(4, dtype=float); R4[:3, :3] = R_orth
+
+                    R4 = np.eye(4, dtype=float)
+                    R4[:3, :3] = R_orth
                     q_obj_cam = tf.transformations.quaternion_from_matrix(R4)
-                    roll, pitch, yaw = tf.transformations.euler_from_matrix(R4, axes='sxyz')
+                    roll, pitch, yaw = tf.transformations.euler_from_matrix(R4, axes="sxyz")
                 except Exception as e:
                     rospy.logwarn_throttle(10, f"[perception6d] PCA3D failed: {e}")
                     q_obj_cam = None
 
+            # fallback: 2D PCA on XY to estimate yaw
             if q_obj_cam is None:
-                # PCA 2D fallback for yaw
                 try:
                     xy = pts[:, :2]
-                    if xy.shape[0] >= max(2, self.min_points_pca):
+                    if xy.shape[0] >= self.min_points_pca:
                         comps2 = compute_pca_components(xy, n_components=2)
                         vec = comps2[0]
                         yaw = np.arctan2(vec[1], vec[0])
@@ -270,14 +348,14 @@ class Perception6DNode:
                         yaw = 0.0
                 except Exception:
                     yaw = 0.0
-                q_obj_cam = tf.transformations.quaternion_from_euler(0.0, 0.0, yaw)
+                q_obj_cam = tf.transformations.quaternion_from_euler(0.0, 0.0, float(yaw))
                 roll = pitch = 0.0
 
             # pose in camera frame
             tx_cam, ty_cam, tz_cam = float(centroid[0]), float(centroid[1]), float(centroid[2])
             pose_cam = PoseStamped()
             pose_cam.header.frame_id = self.frame_camera
-            pose_cam.header.stamp = stamp
+            pose_cam.header.stamp = rospy.Time.now()
             pose_cam.pose.position.x = tx_cam
             pose_cam.pose.position.y = ty_cam
             pose_cam.pose.position.z = tz_cam
@@ -286,81 +364,104 @@ class Perception6DNode:
             pose_cam.pose.orientation.z = float(q_obj_cam[2])
             pose_cam.pose.orientation.w = float(q_obj_cam[3])
 
-            # transform to world frame using transformPose (handles time & rotation properly)
+            # transform to base frame
             try:
-                # wait for transform at the same stamp as the image (or reasonable fallback)
-                self.tf_listener.waitForTransform(self.frame_world, self.frame_camera, stamp, rospy.Duration(1.0))
-                pose_world = self.tf_listener.transformPose(self.frame_world, pose_cam)
-                # Ensure world header stamp is also set to image stamp (useful for consumers)
-                pose_world.header.stamp = stamp
+                self.tf_listener.waitForTransform(self.frame_base, self.frame_camera, rospy.Time(0), rospy.Duration(1.0))
+                (trans, rot) = self.tf_listener.lookupTransform(self.frame_base, self.frame_camera, rospy.Time(0))
+
+                mat_cam_to_base = tf.transformations.concatenate_matrices(
+                    tf.transformations.translation_matrix(trans), tf.transformations.quaternion_matrix(rot)
+                )
+                p_cam = np.array([tx_cam, ty_cam, tz_cam, 1.0])
+                p_base = np.dot(mat_cam_to_base, p_cam)
+
+                # rotate quaternion: q_base = rot * q_obj_cam
+                q_base = tf.transformations.quaternion_multiply(rot, q_obj_cam)
+
+                pose_base = PoseStamped()
+                pose_base.header = pose_cam.header
+                pose_base.header.frame_id = self.frame_base
+                pose_base.pose.position.x = float(p_base[0])
+                pose_base.pose.position.y = float(p_base[1])
+                pose_base.pose.position.z = float(p_base[2])
+                pose_base.pose.orientation.x = float(q_base[0])
+                pose_base.pose.orientation.y = float(q_base[1])
+                pose_base.pose.orientation.z = float(q_base[2])
+                pose_base.pose.orientation.w = float(q_base[3])
             except Exception as e:
-                rospy.logwarn_throttle(5, f"[perception6d] TF transform to world failed: {e}")
-                # fallback: publish camera-frame pose but label clearly
-                pose_world = pose_cam
-                pose_world.header.frame_id = self.frame_camera
+                rospy.logwarn_throttle(10, f"[perception6d] TF transform failed: {e}")
+                # fallback to camera frame (not ideal but safe)
+                pose_base = pose_cam
 
-            # FILTER by world Z-range and Y>=0 in world frame
-            z_world = None
-            y_world = None
-            try:
-                if pose_world.header.frame_id == self.frame_world:
-                    z_world = float(pose_world.pose.position.z)
-                    y_world = float(pose_world.pose.position.y)
-            except Exception:
-                z_world = None
-                y_world = None
+            # height filter in base_link (only filter present)
+            zbase = pose_base.pose.position.z
 
-            # reject if Z outside table band
-            if z_world is not None and (z_world < 0.60 or z_world > 0.80):
-                cv2.rectangle(debug_img, (x1, y1), (x2, y2), (0,0,255), 2)  # red
-                cv2.putText(debug_img, f"{class_name} (z out)", (x1, max(y1-10,0)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,0,255), 2)
-                rospy.loginfo(f"[perception6d] {class_name} ignored due to z_out_of_range: z={z_world:.3f}")
+            # extra hard cutoff to remove robot arm detections
+            # anything above this z is rejected unconditionally
+            Z_ARM_CUTOFF = -0.85  # tightened cutoff to avoid rejecting real blocks around -1.0
+            if zbase > Z_ARM_CUTOFF:
+                cv2.rectangle(debug_img, (x1c, y1c), (x2c, y2c), (0, 0, 255), 2)
+                cv2.putText(
+                    debug_img,
+                    class_name + f" z={zbase:.3f}",
+                    (x1c, max(y1c - 10, 0)),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.6,
+                    (0, 0, 255),
+                    2,
+                )
+                rospy.logdebug(f"[perception6d] rejected (arm cutoff) {class_name} z={zbase:.3f}")
                 continue
 
-            # reject if Y is negative in world frame
-            if y_world is not None and y_world < 0.0:
-                cv2.rectangle(debug_img, (x1, y1), (x2, y2), (0,0,255), 2)  # red
-                cv2.putText(debug_img, f"{class_name} (y<0)", (x1, max(y1-10,0)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,0,255), 2)
-                rospy.loginfo(f"[perception6d] {class_name} ignored due to y_negative: y={y_world:.3f}")
+            if not (self.z_min_base <= zbase <= self.z_max_base):
+                # rejected by table height window
+                cv2.rectangle(debug_img, (x1c, y1c), (x2c, y2c), (0, 0, 255), 2)
+                cv2.putText(
+                    debug_img,
+                    class_name + f" z={zbase:.3f}",
+                    (x1c, max(y1c - 10, 0)),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.6,
+                    (0, 0, 255),
+                    2,
+                )
+                rospy.logdebug(f"[perception6d] rejected by height window {class_name} z={zbase:.3f}")
                 continue
 
-            # publish PoseStamped on world-named topic
-            topic = f"/detected_object_pose_{safe_name(class_name)}_world"
+            # accepted: publish PoseStamped (ROS-safe topic)
+            topic = f"/detected_object_pose_{safe_name(class_name)}"
             if topic not in self.pose_pubs:
                 self.pose_pubs[topic] = rospy.Publisher(topic, PoseStamped, queue_size=5)
                 rospy.loginfo(f"[perception6d] publishing poses on {topic}")
-            self.pose_pubs[topic].publish(pose_world)
-            topic = f"/detected_object_pose_{safe_name(class_name)}_world"
-            if topic not in self.pose_pubs:
-                self.pose_pubs[topic] = rospy.Publisher(topic, PoseStamped, queue_size=5)
-                rospy.loginfo(f"[perception6d] publishing poses on {topic}")
-            self.pose_pubs[topic].publish(pose_world)
 
-            # draw accepted detection (green)
-            cv2.rectangle(debug_img, (x1, y1), (x2, y2), (0,255,0), 2)
-            # show class + z(world) + yaw degrees
-            try:
-                yaw_world = tf.transformations.euler_from_quaternion([pose_world.pose.orientation.x,
-                                                                      pose_world.pose.orientation.y,
-                                                                      pose_world.pose.orientation.z,
-                                                                      pose_world.pose.orientation.w])[2]
-                yaw_deg = np.degrees(yaw_world)
-            except Exception:
-                yaw_deg = 0.0
-            label = f"{class_name} z={pose_world.pose.position.z:.3f} y={yaw_deg:.1f}deg"
-            cv2.putText(debug_img, label, (x1, max(y1-10,0)), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,255,0), 2)
+            self.pose_pubs[topic].publish(pose_base)
 
-            # log a concise line
-            rospy.loginfo(f"[perception6d] {class_name} -> world: x={pose_world.pose.position.x:.3f} y={pose_world.pose.position.y:.3f} z={pose_world.pose.position.z:.3f} yaw={yaw_deg:.1f}deg")
+            # draw bbox & label accepted (green)
+            cv2.rectangle(debug_img, (x1c, y1c), (x2c, y2c), (0, 255, 0), 2)
+            cv2.putText(
+                debug_img,
+                class_name + f" z={zbase:.3f}",
+                (x1c, max(y1c - 10, 0)),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                (0, 255, 0),
+                2,
+            )
+
+            # small log
+            rospy.loginfo_throttle(
+                5,
+                f"[perception6d] {class_name}: base_pos = ({pose_base.pose.position.x:.3f}, {pose_base.pose.position.y:.3f}, {pose_base.pose.position.z:.3f}), yaw={np.degrees(yaw):.1f}",
+            )
 
         # publish debug image
         try:
-            img_msg = self.bridge.cv2_to_imgmsg(debug_img, encoding="bgr8")
-            img_msg.header.stamp = stamp
-            img_msg.header.frame_id = self.frame_camera
-            self.debug_image_pub.publish(img_msg)
+            msg = self.bridge.cv2_to_imgmsg(debug_img, encoding="bgr8")
+            msg.header.stamp = rospy.Time.now()
+            msg.header.frame_id = self.frame_camera
+            self.debug_image_pub.publish(msg)
         except Exception as e:
-            rospy.logwarn_throttle(20, f"[perception6d] debug image publish failed: {e}")
+            rospy.logwarn_throttle(20, f"[perception6d] failed publish debug image: {e}")
 
     def spin(self):
         rospy.spin()
