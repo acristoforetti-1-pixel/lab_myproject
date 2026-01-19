@@ -5,6 +5,7 @@ import random
 import math
 import uuid
 
+from std_msgs.msg import String
 from gazebo_msgs.srv import SpawnModel, GetModelState
 from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties
 from gazebo_msgs.msg import ODEPhysics
@@ -208,7 +209,7 @@ if __name__ == "__main__":
     get_state_srv = rospy.ServiceProxy("/gazebo/get_model_state", GetModelState)
 
     pub_obj_rpy = rospy.Publisher("/vision/object_rpy", Float64MultiArray, queue_size=10)
-
+    pub_obj_name = rospy.Publisher("/vision/object_name", String, queue_size=10)
     # ✅ forza fisica ogni volta che spawni
     fix_gazebo_physics()
 
@@ -260,10 +261,14 @@ if __name__ == "__main__":
         rospy.sleep(0.4)
 
         # ✅ PUBBLICA PER 1 SECONDO
+        name_msg = String()
+        name_msg.data = model  # es: "X1-Y2-Z2-FILLET"
         rate = rospy.Rate(10)
         t0 = rospy.Time.now()
+
         while (rospy.Time.now() - t0).to_sec() < 1.0:
             pub_obj_rpy.publish(msg)
+            pub_obj_name.publish(name_msg)
             rate.sleep()
 
         rospy.loginfo(f"Spawned: {instance} base_link x={x_b:.3f} y={y_b:.3f} rxy={math.sqrt(x_b*x_b+y_b*y_b):.3f} yaw={yaw_b:.3f}")
