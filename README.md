@@ -66,3 +66,9 @@ Transport hint: raw
 Queue size: 2
 
 3. rostopic list | grep detected_object_pose (if u want to see the classifications of the found objects)
+
+if you need it
+- source /root/venv/bin/activate
+- source /opt/ros/noetic/setup.bash
+- source /root/ros_ws/devel/setup.bash
+
