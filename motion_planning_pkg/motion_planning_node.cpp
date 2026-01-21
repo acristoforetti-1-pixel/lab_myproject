@@ -28,8 +28,8 @@ public:
     pnh.param<std::string>("command_topic",      cmd_topic_, "/ur5/joint_group_pos_controller/command");
     pnh.param<std::string>("ack_topic",          ack_topic_, "/acknowledgement");
 
-    pnh.param("hand_min", hand_min_, 0.0);
-    pnh.param("hand_max", hand_max_, 0.8);
+    pnh.param("hand_min", hand_min_, -0.20);
+    pnh.param("hand_max", hand_max_, 0.85);
 
     pnh.param("hold_last_command", hold_last_command_, true);
     pnh.param("hold_rate_hz", hold_rate_hz_, 30.0);

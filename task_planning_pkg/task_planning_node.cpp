@@ -255,6 +255,24 @@ private:
     have_js_ = true;
   }
 
+bool waitGripperAt(double cmd, double tol, double timeout_s) {
+  ros::Rate r(200);
+  const ros::Time t0 = ros::Time::now();
+  while (ros::ok()) {
+    ros::spinOnce();
+    double g1=0, g2=0;
+    {
+      std::lock_guard<std::mutex> lk(mtx_);
+      if (q_cur_raw_.size() >= 8) { g1 = q_cur_raw_[6]; g2 = q_cur_raw_[7]; }
+    }
+    if (std::abs(g1 - cmd) < tol && std::abs(g2 - cmd) < tol) return true;
+    if ((ros::Time::now() - t0).toSec() > timeout_s) return false;
+    r.sleep();
+  }
+  return false;
+}
+
+
   void ackCb(const std_msgs::Bool& msg) {
     std::lock_guard<std::mutex> lk(mtx_);
     ack_ = msg.data;
@@ -509,14 +527,14 @@ double z_grasp    = z_safe + z_grasp_off_;
 //  FIX: se è 2x2 (classe 6) NON schiacciare sul tavolo
 // alza la quota grasp di 8-12mm
 if (class_id == 6) {
-  z_grasp += 0.010;     // +10 mm (puoi provare 0.008 / 0.012)
-  z_pre   += 0.010;
+  z_grasp += 0.014;     // +10 mm (puoi provare 0.008 / 0.012)
+  z_pre   += 0.014;
 }
   
   
   //  close diverso solo per 2x2
 double close_cmd = hand_close_;
-if (class_id == 6) close_cmd = -0.12;
+if (class_id == 6) close_cmd = -0.08;
 
   // -------------------------
   // Drop Y per classe (modifica qui se vuoi)
@@ -734,6 +752,7 @@ q_gripper_cmd_[1] = close_cmd;
     for (int i = 0; i < 6; ++i) q6_raw[i] = q_seed8_raw[i];
     publishJointTarget(q6_raw);
     waitAck(ack_timeout_);
+    waitGripperAt(hand_open_, 0.02, 1.0);
     ros::Duration(0.05).sleep();
   }
 

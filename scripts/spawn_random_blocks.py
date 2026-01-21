@@ -27,11 +27,11 @@ Z_OFFSET = 1.72
 X_RANGE = (-0.35, 0.30)
 Y_RANGE = (0.10, 0.40)
 
-# ✅ zona raggiungibile (in base_link)
+#zona raggiungibile (in base_link)
 MIN_RXY = 0.22   # sotto questo = troppo vicino alla base (fa casino)
 MAX_RXY = 0.55   # sopra questo = spesso jump/singolarita' (se vuoi aumenta)
 
-# ✅ “NO GO ZONE” (zona che di solito crea singularity / fold)
+#  “NO GO ZONE” (zona che di solito crea singularity / fold)
 # (regola questi numeri se vuoi, ma già così migliora tanto)
 NO_GO_RECT = {
     "x_min": -0.35,
