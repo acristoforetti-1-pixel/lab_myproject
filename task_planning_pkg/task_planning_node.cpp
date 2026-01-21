@@ -354,6 +354,42 @@ bool waitGripperAt(double cmd, double tol, double timeout_s) {
     msg.data[7] = q_gripper_cmd_[1];
     pub_target_.publish(msg);
   }
+bool solveBestYawWithChosen(double px, double py, double pz,
+                            double yaw0,
+                            const std::vector<double>& seed8_raw,
+                            std::vector<double>& qbest_raw,
+                            double& yaw_chosen,
+                            double& best_jump)
+{
+  const double cands[2] = { wrapPi(yaw0), wrapPi(yaw0 + M_PI) };
+
+  bool any = false;
+  best_jump = 1e9;
+  yaw_chosen = cands[0];
+
+  std::vector<double> qtmp_raw;
+
+  for (int i = 0; i < 2; ++i) {
+    geometry_msgs::Pose p = makeTopDownPose(px, py, pz, cands[i]);
+    if (!solveIK(p, seed8_raw, qtmp_raw)) continue;
+    if (nearWristSingularity(qtmp_raw)) continue;
+
+    //  penalizza flip sul joint0 (spalla) -> evita “accartocciamenti”
+    double j = jumpNorm6(qtmp_raw, seed8_raw);
+    double d0 = wrapPi(qtmp_raw[0] - seed8_raw[0]);
+    j += 0.8 * d0 * d0;   // peso extra sulla shoulder_pan
+
+    if (j < best_jump) {
+      best_jump = j;
+      qbest_raw = qtmp_raw;
+      yaw_chosen = cands[i];
+      any = true;
+    }
+  }
+  return any;
+}
+
+
 
   bool loadJointLimitsFromYaml(const std::string& path,
                                std::map<std::string, std::pair<double,double>>& lim_out) {
@@ -498,14 +534,14 @@ void doPickPlace(const geometry_msgs::PoseStamped& obj, std::vector<double> q_se
   }
 
   // -------------------------
-  // Z safety (tavolo)
+  // Z safety (table)
   // -------------------------
   const double z_min  = table_z_ + z_clear_;
   const double z_safe = std::max(z, z_min);
   const double drop_z_safe = std::max(drop_z_, z_min);
 
   // -------------------------
-  // Leggo nome oggetto (classe)
+  // Read object name (class)
   // -------------------------
   std::string obj_name;
   {
@@ -518,26 +554,39 @@ void doPickPlace(const geometry_msgs::PoseStamped& obj, std::vector<double> q_se
   if (parseXYZ(obj_name, Xc, Yc, Zc)) {
     class_id = classIdFromXYZ(Xc, Yc, Zc);
   }
-  
-  // --- quote di avvicinamento (default)
-double z_pre_high = z_safe + z_pre_off_ + 0.10;
-double z_pre      = z_safe + z_pre_off_;
-double z_grasp    = z_safe + z_grasp_off_;
-
-//  FIX: se è 2x2 (classe 6) NON schiacciare sul tavolo
-// alza la quota grasp di 8-12mm
-if (class_id == 6) {
-  z_grasp += 0.014;     // +10 mm (puoi provare 0.008 / 0.012)
-  z_pre   += 0.014;
-}
-  
-  
-  //  close diverso solo per 2x2
-double close_cmd = hand_close_;
-if (class_id == 6) close_cmd = -0.08;
 
   // -------------------------
-  // Drop Y per classe (modifica qui se vuoi)
+  // Approach heights (default)
+  // -------------------------
+  double z_pre_high = z_safe + z_pre_off_ + 0.10;
+  double z_pre      = z_safe + z_pre_off_;
+  double z_grasp    = z_safe + z_grasp_off_;
+
+  // Soft safety: allow going a bit below z_min (needed to really touch blocks)
+  const double z_grasp_min = z_min - 0.020;   // allow 2cm under table safety plane
+  const double z_pre_min   = z_min + 0.010;
+  z_grasp = std::max(z_grasp, z_grasp_min);
+  z_pre   = std::max(z_pre,   z_pre_min);
+
+  // If 2x2 (class 6): grasp a bit higher to avoid pressing it into the table
+  if (class_id == 6) {
+    z_grasp += 0.012;   // +12mm
+    z_pre   += 0.010;
+  }
+
+  // -------------------------
+  // Gripper close command
+  // -------------------------
+  double close_cmd_first = hand_close_;
+  double close_cmd_final = hand_close_;
+
+  if (class_id == 6) {
+    close_cmd_first =  0.0;   // soft initial squeeze
+    close_cmd_final = -0.04;   // final squeeze after micro lift
+  }
+
+  // -------------------------
+  // Drop Y per class (edit here)
   // -------------------------
   auto dropYForClass = [&](int cid)->double {
     switch (cid) {
@@ -546,18 +595,17 @@ if (class_id == 6) close_cmd = -0.08;
       case 2: return  0.24;
       case 3: return  0.16;
       case 4: return  0.07;
-      case 1: return  0.0;
+      case 1: return  0.00;
       case 0: return -0.07;
-      default: return drop_y_;   // fallback
+      default: return drop_y_;
     }
   };
-  
 
-  //  come vuoi tu: X del place sempre uguale
+  // X of place always fixed
   const double drop_x_eff = drop_x_;
   double drop_y_eff = dropYForClass(class_id);
 
-  // check rxy drop (evita posizioni impossibili)
+  // rxy sanity check for drop
   const double r_drop = std::sqrt(drop_x_eff*drop_x_eff + drop_y_eff*drop_y_eff);
   if (r_drop < 0.20 || r_drop > 0.65) {
     ROS_WARN("Drop rxy unsafe (r=%.3f). Forcing safe drop_y=%.3f", r_drop, drop_y_);
@@ -565,7 +613,7 @@ if (class_id == 6) close_cmd = -0.08;
   }
 
   // -------------------------
-  // yaw oggetto
+  // Object yaw
   // -------------------------
   double rr, pp, yaw_obj;
   {
@@ -574,17 +622,14 @@ if (class_id == 6) close_cmd = -0.08;
     tf2::Matrix3x3(qtmp).getRPY(rr, pp, yaw_obj);
   }
 
-  // grasp yaw (come prima)
   const double yaw_grasp = wrapPi(yaw_obj + M_PI/2.0);
-
-  // ✅ place yaw fisso dritto
   const double yaw_place = 0.0;
 
   ROS_WARN("OBJ base_link x=%.3f y=%.3f z=%.3f (z_safe=%.3f) yaw_obj=%.3f class=%d name=%s -> DROP x=%.3f y=%.3f",
            x, y, z, z_safe, yaw_obj, class_id, obj_name.c_str(), drop_x_eff, drop_y_eff);
 
   // ------------------------------------------------------------
-  // Helper: moveTo BEST yaw (yaw oppure yaw+pi)  --> usato per pick/carry
+  // Helper: moveTo BEST yaw (yaw or yaw+pi) for pick/carry
   // ------------------------------------------------------------
   auto moveToBestYaw = [&](double px, double py, double pz, double yaw,
                            const char* tag, double max_jump)->bool
@@ -596,7 +641,6 @@ if (class_id == 6) close_cmd = -0.08;
       ROS_WARN("IK failed %s.", tag);
       return false;
     }
-
     if (bestJ > max_jump) {
       ROS_WARN("IK jump too large at %s: %.3f > %.3f (reject).", tag, bestJ, max_jump);
       return false;
@@ -615,7 +659,7 @@ if (class_id == 6) close_cmd = -0.08;
   };
 
   // ------------------------------------------------------------
-  // Helper: moveTo FIXED yaw (solo yaw richiesto) --> usato per place yaw=0
+  // Helper: moveTo FIXED yaw for place yaw=0
   // ------------------------------------------------------------
   auto moveToFixedYaw = [&](double px, double py, double pz, double yaw,
                             const char* tag, double max_jump)->bool
@@ -627,7 +671,6 @@ if (class_id == 6) close_cmd = -0.08;
       ROS_WARN("IK failed %s (fixed yaw).", tag);
       return false;
     }
-
     if (nearWristSingularity(q6_raw)) {
       ROS_WARN("Near singularity at %s (fixed yaw).", tag);
       return false;
@@ -662,14 +705,12 @@ if (class_id == 6) close_cmd = -0.08;
     for (int i = 0; i < 6; ++i) q6_raw[i] = q_seed8_raw[i];
     publishJointTarget(q6_raw);
     waitAck(ack_timeout_);
-    ros::Duration(0.05).sleep();
+    ros::Duration(0.03).sleep();
   }
 
   // ------------------------------------------------------------
-  // APPROACH PICK (anti-sing per X negativa)
+  // APPROACH PICK (anti-sing for negative X)
   // ------------------------------------------------------------
- 
-
   const double x_front = 0.10;
   const double x_mid0  = 0.00;
   const double x_midN  = -0.12;
@@ -682,28 +723,47 @@ if (class_id == 6) close_cmd = -0.08;
 
   if (!moveToBestYaw(x, y, z_pre_high, yaw_grasp, "pregrasp_high", 4.5)) return;
   if (!moveToBestYaw(x, y, z_pre,      yaw_grasp, "pregrasp",      ik_max_jump_)) return;
-  if (!moveToBestYaw(x, y, z_grasp,    yaw_grasp, "grasp",         ik_max_jump_)) return;
 
   // ------------------------------------------------------------
-  // CLOSE
+  // GRASP + optional retry if empty
   // ------------------------------------------------------------
-  ROS_INFO("Closing gripper (hold) (g=%.3f)", close_cmd);
-q_gripper_cmd_[0] = close_cmd;
-q_gripper_cmd_[1] = close_cmd;
+  auto doCloseHold = [&](double cmd, const char* tag)->void {
+    ROS_INFO("Closing gripper (%s) (g=%.3f)", tag, cmd);
+    q_gripper_cmd_[0] = cmd;
+    q_gripper_cmd_[1] = cmd;
+    std::vector<double> q6_raw(6);
+    for (int i = 0; i < 6; ++i) q6_raw[i] = q_seed8_raw[i];
+    publishJointTarget(q6_raw);
+    waitAck(ack_timeout_);
+    ros::Duration(grasp_settle_s_).sleep();
+  };
 
-{
-  std::vector<double> q6_raw(6);
-  for (int i = 0; i < 6; ++i) q6_raw[i] = q_seed8_raw[i];
-  publishJointTarget(q6_raw);
-  waitAck(ack_timeout_);
-  ros::Duration(grasp_settle_s_).sleep();
-}
+  // go to grasp pose
+  if (!moveToBestYaw(x, y, z_grasp, yaw_grasp, "grasp", ik_max_jump_)) return;
+
+  // close first
+  doCloseHold(close_cmd_first, "hold1");
+
+  // if it fully closes, likely empty grasp -> retry once slightly deeper (except class 6 we are careful)
+  bool likely_empty = waitGripperAt(close_cmd_first, 0.02, 0.6);
+  if (likely_empty && class_id != 6) {
+    ROS_WARN("Grasp likely empty -> retry deeper once");
+    const double z_retry = z_grasp - 0.006;  // 6mm deeper
+    if (!moveToBestYaw(x, y, z_retry, yaw_grasp, "grasp_retry", ik_max_jump_)) return;
+    doCloseHold(close_cmd_first, "hold1_retry");
+  }
+
   // ------------------------------------------------------------
-  // MICRO LIFT + LIFT
+  // MICRO LIFT + (for 2x2) final close after micro-lift
   // ------------------------------------------------------------
   const double z_micro = z_safe + 0.08;
-  if (!moveToBestYaw(x, y, z_micro,              yaw_grasp, "micro_lift", ik_max_jump_)) return;
-  if (!moveToBestYaw(x, y, z_safe + z_lift_off_, yaw_grasp, "lift",       ik_max_jump_)) return;
+  if (!moveToBestYaw(x, y, z_micro, yaw_grasp, "micro_lift", ik_max_jump_)) return;
+
+  if (class_id == 6) {
+    doCloseHold(close_cmd_final, "hold2_final");
+  }
+
+  if (!moveToBestYaw(x, y, z_safe + z_lift_off_, yaw_grasp, "lift", ik_max_jump_)) return;
 
   // ------------------------------------------------------------
   // CARRY UP
@@ -711,35 +771,41 @@ q_gripper_cmd_[1] = close_cmd;
   const double z_carry = z_safe + 0.30;
   if (!moveToBestYaw(x, y, z_carry, yaw_grasp, "carry_up", ik_max_jump_)) return;
 
-  // waypoint intermedio
+  // waypoint mid (stabilizza)
   const double x_mid = 0.25;
   moveToBestYaw(x_mid, y, z_carry, yaw_grasp, "carry_mid", 4.5);
 
   // ------------------------------------------------------------
-  // SAFE LANE (evita crash tra Y positive/negative)
+  // SAFE LANE (avoid flips between Y+ and Y-)
   // ------------------------------------------------------------
-  const double y_lane = 0.20;   // corsia stabile
+ const double y_lane = 0.20;
 
-  // vai sopra drop mantenendo SEMPRE la stessa X del place
-  if (!moveToBestYaw(drop_x_eff, y_lane,    z_carry, yaw_grasp, "carry_lane_safeY",     4.5)) return;
-  if (!moveToBestYaw(drop_x_eff, drop_y_eff, z_carry, yaw_grasp, "carry_lane_to_dropY", 4.5)) return;
+// Step 1: vai su in avanti restando nella stessa y dell'oggetto
+if (!moveToBestYaw(0.15, y, z_carry, yaw_grasp, "carry_forward_safe", 1.5)) return;
 
-  // allinea yaw=0 restando sopra il drop
+// Step 2: vai sulla corsia y_lane mantenendo x=0.15
+if (!moveToBestYaw(0.15, y_lane, z_carry, yaw_grasp, "carry_to_lane", 1.5)) return;
+
+// Step 3: ora vai al drop mantenendo X del place costante
+if (!moveToBestYaw(drop_x_eff, y_lane,     z_carry, yaw_grasp, "carry_lane_safeY",     1.8)) return;
+if (!moveToBestYaw(drop_x_eff, drop_y_eff, z_carry, yaw_grasp, "carry_lane_to_dropY",  1.8)) return;
+
+  // align yaw=0 on top of drop
   if (!moveToFixedYaw(drop_x_eff, drop_y_eff, z_carry, yaw_place, "yaw_align_place", 4.5)) {
     ROS_WARN("yaw_align_place failed -> trying yaw=pi fallback");
     if (!moveToFixedYaw(drop_x_eff, drop_y_eff, z_carry, wrapPi(yaw_place + M_PI), "yaw_align_place_pi", 4.5)) return;
   }
 
   // ------------------------------------------------------------
-  // PLACE: scendo davvero quasi a contatto (così LO MOLLA)
+  // PLACE higher (not on the ground/table)
   // ------------------------------------------------------------
   if (!moveToFixedYaw(drop_x_eff, drop_y_eff, drop_z_safe + place_pre_up_, yaw_place, "place_pre", 4.5)) return;
 
-  // touch quasi tavolo
-  const double z_touch = drop_z_safe + 0.006;
-  if (!moveToFixedYaw(drop_x_eff, drop_y_eff, z_touch, yaw_place, "place_touch", 4.5)) return;
+  // place height: higher than before
+  const double z_place = drop_z_safe + 0.030;   // 3 cm above table plane
+  if (!moveToFixedYaw(drop_x_eff, drop_y_eff, z_place, yaw_place, "place", 4.5)) return;
 
-  ros::Duration(0.12).sleep();  // settle
+  ros::Duration(0.08).sleep();
 
   // ------------------------------------------------------------
   // OPEN RELEASE
@@ -753,20 +819,18 @@ q_gripper_cmd_[1] = close_cmd;
     publishJointTarget(q6_raw);
     waitAck(ack_timeout_);
     waitGripperAt(hand_open_, 0.02, 1.0);
-    ros::Duration(0.05).sleep();
+    ros::Duration(0.03).sleep();
   }
 
-  // micro peel-off: stacca il blocco dalle dita
-  moveToFixedYaw(drop_x_eff, drop_y_eff, drop_z_safe + 0.030, yaw_place, "release_up_small", 4.5);
-  moveToFixedYaw(drop_x_eff, drop_y_eff, drop_z_safe + 0.120, yaw_place, "detach_up",        4.5);
+  // peel-off upwards
+  moveToFixedYaw(drop_x_eff, drop_y_eff, z_place + 0.020, yaw_place, "release_up_small", 4.5);
+  moveToFixedYaw(drop_x_eff, drop_y_eff, z_place + 0.120, yaw_place, "detach_up",        4.5);
 
-  // ------------------------------------------------------------
-  // RETREAT su corsia (così il prossimo pick non gira al contrario)
-  // ------------------------------------------------------------
+  // retreat to lane to avoid next pick flipping
   moveToFixedYaw(drop_x_eff, y_lane, z_carry, yaw_place, "retreat_lane", 4.5);
 
-  ROS_INFO("Pick&place done. class=%d name=%s drop=(%.3f,%.3f) placeYaw=0",
-           class_id, obj_name.c_str(), drop_x_eff, drop_y_eff);
+  ROS_INFO("Pick&place done. class=%d name=%s drop=(%.3f,%.3f) placeYaw=0 z_place=%.3f",
+           class_id, obj_name.c_str(), drop_x_eff, drop_y_eff, z_place);
 }
   // ---------- Members ----------
   std::mutex mtx_;

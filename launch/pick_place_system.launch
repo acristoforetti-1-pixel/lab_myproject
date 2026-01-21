@@ -55,7 +55,7 @@
   <param name="drop_y" value="0.35"/>
   <param name="drop_z" value="-0.83"/>
 
-  <param name="place_pre_up" value="0.28"/>
+  <param name="place_pre_up" value="0.18"/>
 
   <param name="hand_open" value="0.85"/>
   <param name="hand_close" value="-0.16"/>
