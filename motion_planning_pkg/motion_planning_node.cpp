@@ -146,8 +146,7 @@ private:
       ROS_INFO("Joint name->index map created.");
     }
 
-    // ✅ IMPORTANTE: qui NON wrappiamo i joint del braccio!
-    // li lasciamo RAW/unwrapped perché il controller vive così.
+    
     for (int k = 0; k < 6; ++k) q_[k] = msg.position[idx_arm_[k]];
 
     // gripper clampato (questo controller di solito lavora 0..0.8)
@@ -196,7 +195,7 @@ private:
       handf_[1] = hand_[1];
     }
 
-    // ✅ CHIAVE: porta qf vicino a q0 MA nel dominio UNWRAPPED del controller
+    
     for (int i = 0; i < 6; ++i) {
       // qf è tipo [-pi,pi], q0 può essere 60 rad -> lo "srotolo" vicino a q0
       qf_[i] = q0_[i] + angDiff(qf_[i], wrapPi(q0_[i]));
