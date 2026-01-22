@@ -153,7 +153,7 @@ def random_pose_non_overlapping(existing_xy_base, get_state_srv):
 
 
 # -------------------------------------------------------
-# FIX FISICA GAZEBO (senza modificare i modelli)
+# FIX FISICA GAZEBO 
 # -------------------------------------------------------
 def fix_gazebo_physics():
     rospy.wait_for_service("/gazebo/get_physics_properties")
@@ -195,7 +195,7 @@ def fix_gazebo_physics():
         rospy.loginfo("Gazebo physics forced: dt=%.4f rate=%.0f iters=%d ERP=%.3f CFM=%.1e",
                       time_step, max_update_rate, ode.sor_pgs_iters, ode.erp, ode.cfm)
     else:
-        rospy.logwarn("⚠️ Physics not changed: %s", ok.status_message)
+        rospy.logwarn(" Physics not changed: %s", ok.status_message)
 # -------------------------------------------------------
 # MAIN
 # -------------------------------------------------------
@@ -210,7 +210,7 @@ if __name__ == "__main__":
 
     pub_obj_rpy = rospy.Publisher("/vision/object_rpy", Float64MultiArray, queue_size=10)
     pub_obj_name = rospy.Publisher("/vision/object_name", String, queue_size=10)
-    # ✅ forza fisica ogni volta che spawni
+    # forza fisica ogni spawn
     fix_gazebo_physics()
 
     models = get_available_models()
@@ -256,11 +256,11 @@ if __name__ == "__main__":
         msg = Float64MultiArray()
         msg.data = [x_b, y_b, z_b, math.pi, 0.0, yaw_b]
 
-        # ✅ PUBBLICA PER 1s così il task node lo riceve sicuro
-        # ✅ aspetta che il blocco si assesti sul tavolo
+        # PUBBLICA PER 1s così il task node lo riceve sicur
+        # aspetta che il blocco si assesti sul tavolo
         rospy.sleep(0.4)
 
-        # ✅ PUBBLICA PER 1 SECONDO
+        # PUBBLICA PER 1 SECONDO
         name_msg = String()
         name_msg.data = model  # es: "X1-Y2-Z2-FILLET"
         rate = rospy.Rate(10)
