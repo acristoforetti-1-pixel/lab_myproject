@@ -59,7 +59,7 @@ public:
     pnh.param("ack_timeout", ack_timeout_, 10.0);
 
     pnh.param("z_pre",   z_pre_off_,   0.12);
-    //  scendi 4mm sotto lo "z_safe" per prendere anche i piccoli
+   
     pnh.param("z_grasp", z_grasp_off_, -0.016);
     pnh.param("z_lift",  z_lift_off_,  0.20);
 
@@ -70,7 +70,7 @@ public:
     pnh.param("drop_y", drop_y_, 0.20);
     pnh.param("drop_z", drop_z_, -0.83);
 
-    // più alto pre-place, più facile mollare
+   
     pnh.param("place_pre_up", place_pre_up_, 0.28);
     pnh.param("safe_up_after_open", safe_up_after_open_, 0.06); // piccolo shake su
 
@@ -86,7 +86,7 @@ public:
     //  più tempo di contatto prima di alzare
     pnh.param("grasp_settle_s", grasp_settle_s_, 0.55);
 
-    //  come vuoi tu: NON tornare home dopo place
+    
     pnh.param("use_home_after_place", use_home_after_place_, false);
 
     loadHomeJoints(pnh);
@@ -186,7 +186,7 @@ private:
 }
 
 
-  //  FIX VERO: salto calcolato sul dominio RAW vicino al seed RAW
+ 
   static double jumpNorm6(const std::vector<double>& q6_raw, const std::vector<double>& seed8_raw) {
     const int n = std::min(6, (int)seed8_raw.size());
     double s = 0.0;
@@ -780,13 +780,13 @@ void doPickPlace(const geometry_msgs::PoseStamped& obj, std::vector<double> q_se
   // ------------------------------------------------------------
  const double y_lane = 0.20;
 
-// Step 1: vai su in avanti restando nella stessa y dell'oggetto
+
 if (!moveToBestYaw(0.15, y, z_carry, yaw_grasp, "carry_forward_safe", 1.5)) return;
 
-// Step 2: vai sulla corsia y_lane mantenendo x=0.15
+
 if (!moveToBestYaw(0.15, y_lane, z_carry, yaw_grasp, "carry_to_lane", 1.5)) return;
 
-// Step 3: ora vai al drop mantenendo X del place costante
+
 if (!moveToBestYaw(drop_x_eff, y_lane,     z_carry, yaw_grasp, "carry_lane_safeY",     1.8)) return;
 if (!moveToBestYaw(drop_x_eff, drop_y_eff, z_carry, yaw_grasp, "carry_lane_to_dropY",  1.8)) return;
 
