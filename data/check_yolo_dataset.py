@@ -35,7 +35,6 @@ def collect_images_recursive(img_root):
         for f in files:
             if f.lower().endswith(IMG_EXTS):
                 full = os.path.join(root, f)
-                # relative path under img_root (preserve subfolders)
                 rel = os.path.relpath(full, img_root)
                 imgs.append((full, rel))
     return imgs
@@ -49,37 +48,32 @@ def main(args):
     lbl_root = os.path.join(args.dataset, "labels", args.split)
 
     if not os.path.exists(img_root):
-        print("❌ Nessuna directory immagini trovata:", img_root)
+        print("Nessuna directory immagini trovata:", img_root)
         return
 
     imgs = collect_images_recursive(img_root)
     if not imgs:
-        print("❌ Nessuna immagine trovata in", img_root)
+        print("Nessuna immagine trovata in", img_root)
         return
 
-    # sample
     sample_n = min(args.num_samples, len(imgs))
     sampled = random.sample(imgs, sample_n)
 
-    # prepare font
     try:
         font = ImageFont.truetype("DejaVuSans.ttf", 14)
     except Exception:
         font = ImageFont.load_default()
 
     for full_path, rel_path in sampled:
-        # compute corresponding label path (replace ext with .txt and prefix with lbl_root)
         lbl_rel = os.path.splitext(rel_path)[0] + ".txt"
         lbl_path = os.path.join(lbl_root, lbl_rel)
 
-        # load image
         img = Image.open(full_path).convert("RGB")
         draw = ImageDraw.Draw(img)
         W, H = img.size
 
         if not os.path.exists(lbl_path):
-            print(f"⚠️ Label mancante per {rel_path}  -> {lbl_path}")
-            # save annotated image into output keeping relative path
+            print(f"Label mancante per {rel_path}  -> {lbl_path}")
             out_img_path = os.path.join(args.output, rel_path)
             os.makedirs(os.path.dirname(out_img_path), exist_ok=True)
             img.save(out_img_path)
@@ -91,21 +85,20 @@ def main(args):
         for line in lines:
             parts = line.strip().split()
             if len(parts) != 5:
-                print(f"⚠️ Formato label errato in {lbl_path}: {line.strip()}")
+                print(f"Formato label errato in {lbl_path}: {line.strip()}")
                 continue
             cid, cx, cy, w, h = parts
             try:
                 cid = int(cid)
                 cx, cy, w, h = map(float, (cx, cy, w, h))
             except Exception:
-                print(f"⚠️ Valori label non numerici in {lbl_path}: {line.strip()}")
+                print(f"Valori label non numerici in {lbl_path}: {line.strip()}")
                 continue
             if cid < 0 or cid >= len(class_names):
-                print(f"⚠️ Class ID fuori range ({cid}) in {lbl_path}")
+                print(f"Class ID fuori range ({cid}) in {lbl_path}")
                 continue
 
             minx, miny, maxx, maxy = yolo_to_pixel(cx, cy, w, h, W, H)
-            # clamp
             minx = max(0, min(minx, W - 1))
             miny = max(0, min(miny, H - 1))
             maxx = max(0, min(maxx, W - 1))
@@ -119,7 +112,7 @@ def main(args):
         os.makedirs(os.path.dirname(out_img_path), exist_ok=True)
         img.save(out_img_path)
 
-    print("✅ Debug completato")
+    print("Debug completato")
     print(f"Immagini annotate salvate in: {args.output}")
 
 if __name__ == "__main__":
