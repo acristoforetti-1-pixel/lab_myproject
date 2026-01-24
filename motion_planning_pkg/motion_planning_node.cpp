@@ -19,7 +19,6 @@ public:
   {
     ros::NodeHandle nh, pnh("~");
 
-    // due tempi separati: braccio più lento, dita più rapide
     pnh.param("arm_T",  arm_T_,  1.0);
     pnh.param("hand_T", hand_T_, 0.25);
 
@@ -96,7 +95,6 @@ private:
     return a;
   }
 
-  // differenza angolare modulo 2pi
   static double angDiff(double a, double b) {
     return wrapPi(a - b);
   }
@@ -149,7 +147,6 @@ private:
     
     for (int k = 0; k < 6; ++k) q_[k] = msg.position[idx_arm_[k]];
 
-    // gripper clampato (questo controller di solito lavora 0..0.8)
     if (idx_hand_[0] >= 0 && idx_hand_[1] >= 0) {
       hand_[0] = clamp(msg.position[idx_hand_[0]], hand_min_, hand_max_);
       hand_[1] = clamp(msg.position[idx_hand_[1]], hand_min_, hand_max_);
@@ -183,10 +180,8 @@ private:
     q0_ = q_;
     hand0_ = hand_;
 
-    // target braccio (6) arriva tipicamente in [-pi,pi] dal task node
     for (int i = 0; i < 6; ++i) qf_[i] = msg.data[i];
 
-    // dita
     if (msg.data.size() >= 8) {
       handf_[0] = clamp(msg.data[6], hand_min_, hand_max_);
       handf_[1] = clamp(msg.data[7], hand_min_, hand_max_);
@@ -197,7 +192,6 @@ private:
 
     
     for (int i = 0; i < 6; ++i) {
-      // qf è tipo [-pi,pi], q0 può essere 60 rad -> lo "srotolo" vicino a q0
       qf_[i] = q0_[i] + angDiff(qf_[i], wrapPi(q0_[i]));
     }
 
@@ -225,7 +219,6 @@ private:
 
     const double t = (ros::Time::now() - t0).toSec();
 
-    // progress braccio e mano separati
     const double tau_a = clamp01(t / std::max(1e-3, Ta));
     const double tau_h = clamp01(t / std::max(1e-3, Th));
 
