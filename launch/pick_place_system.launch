@@ -1,19 +1,16 @@
 <launch>
 
-  <!-- Robot state publisher -->
   <node pkg="robot_state_publisher"
         type="robot_state_publisher"
         name="robot_state_publisher"
         output="screen" />
 
-  <!-- MOTION PLANNING (controller bridge) -->
   <node pkg="lab_myproject"
         type="motion_planning_node"
         name="motion_planning_node"
         output="screen"
         required="true">
 
-    <!-- più veloce -->
     <param name="duration" value="1.0"/>
     <param name="hand_duration" value="0.25"/>
 
@@ -22,14 +19,12 @@
     <param name="command_topic"      value="/ur5/joint_group_pos_controller/command"/>
     <param name="ack_topic"          value="/acknowledgement"/>
 
-    <!-- soft gripper safety + stabilizzazione -->
     <param name="hand_min" value="-0.20"/>
     <param name="hand_max" value="0.85"/>
     <param name="hold_last_command" value="true"/>
     <param name="hold_rate_hz" value="30.0"/>
   </node>
 
-  <!-- TASK PLANNING (IK + pick/place) -->
   <node pkg="lab_myproject"
       type="task_planning_node"
       name="task_planning_node"
