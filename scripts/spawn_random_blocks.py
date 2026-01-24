@@ -28,11 +28,10 @@ X_RANGE = (-0.35, 0.30)
 Y_RANGE = (0.10, 0.40)
 
 #zona raggiungibile (in base_link)
-MIN_RXY = 0.22   # sotto questo = troppo vicino alla base (fa casino)
-MAX_RXY = 0.55   # sopra questo = spesso jump/singolarita' (se vuoi aumenta)
+MIN_RXY = 0.22   # sotto questo = troppo vicino alla base
+MAX_RXY = 0.55   # sopra questo = spesso jump/singolarita'
 
 #  “NO GO ZONE” (zona che di solito crea singularity / fold)
-# (regola questi numeri se vuoi, ma già così migliora tanto)
 NO_GO_RECT = {
     "x_min": -0.35,
     "x_max": -0.18,
@@ -43,9 +42,6 @@ NO_GO_RECT = {
 MODELS_DIR = os.path.expanduser("~/ros_ws/src/lab_myproject/models")
 
 
-# -------------------------------------------------------
-# UTILS
-# -------------------------------------------------------
 def get_available_models():
     return [
         name for name in os.listdir(MODELS_DIR)
@@ -152,9 +148,7 @@ def random_pose_non_overlapping(existing_xy_base, get_state_srv):
     return pose_w, (x_b, y_b)
 
 
-# -------------------------------------------------------
 # FIX FISICA GAZEBO 
-# -------------------------------------------------------
 def fix_gazebo_physics():
     rospy.wait_for_service("/gazebo/get_physics_properties")
     rospy.wait_for_service("/gazebo/set_physics_properties")
@@ -196,9 +190,7 @@ def fix_gazebo_physics():
                       time_step, max_update_rate, ode.sor_pgs_iters, ode.erp, ode.cfm)
     else:
         rospy.logwarn(" Physics not changed: %s", ok.status_message)
-# -------------------------------------------------------
-# MAIN
-# -------------------------------------------------------
+
 if __name__ == "__main__":
     rospy.init_node("spawn_random_blocks")
 
@@ -256,13 +248,12 @@ if __name__ == "__main__":
         msg = Float64MultiArray()
         msg.data = [x_b, y_b, z_b, math.pi, 0.0, yaw_b]
 
-        # PUBBLICA PER 1s così il task node lo riceve sicur
         # aspetta che il blocco si assesti sul tavolo
         rospy.sleep(0.4)
 
         # PUBBLICA PER 1 SECONDO
         name_msg = String()
-        name_msg.data = model  # es: "X1-Y2-Z2-FILLET"
+        name_msg.data = model
         rate = rospy.Rate(10)
         t0 = rospy.Time.now()
 
