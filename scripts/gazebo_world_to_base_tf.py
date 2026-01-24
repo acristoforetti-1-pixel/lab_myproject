@@ -7,7 +7,7 @@ def main():
     rospy.init_node("gazebo_world_to_base_tf")
 
     model_name = rospy.get_param("~model_name", "ur5")
-    base_frame = rospy.get_param("~base_frame", "base_link_inertia")  # radice del tuo TF
+    base_frame = rospy.get_param("~base_frame", "base_link_inertia")
     world_frame = rospy.get_param("~world_frame", "world")
 
     rospy.wait_for_service("/gazebo/get_model_state")
