@@ -50,7 +50,7 @@ class Perception6DNode:
         rospy.init_node("perception_6d_node", anonymous=False)
 
         # params (kept minimal)
-        self.model_path = rospy.get_param("~model_path", "data/runs/detect/train/weights/best.pt")
+        self.model_path = rospy.get_param("~model_path", "/root/ros_ws/src/lab_myproject/data/runs/detect/train/weights/best.pt")
         self.image_topic = rospy.get_param("~image_topic", "/ur5/zed_node/right_raw/image_raw_color")
         self.pointcloud_topic = rospy.get_param("~pointcloud_topic", "/ur5/zed_node/point_cloud/cloud_registered")
         self.camera_info_topic = rospy.get_param("~camera_info_topic", "/ur5/zed_node/right_raw/camera_info")
