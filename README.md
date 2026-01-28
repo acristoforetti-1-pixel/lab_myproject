@@ -73,4 +73,4 @@ if you need it
 - source /root/ros_ws/devel/setup.bash
 
 ## Report
-Project report: [Download PDF](./Pick_and_Place.pdf)
+Project report: [Download PDF](./Pick_and_Place_report.pdf)
