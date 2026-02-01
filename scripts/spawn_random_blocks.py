@@ -1,37 +1,37 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import rospy
 import os
 import random
 import math
 import uuid
 
-from std_msgs.msg import String
 from gazebo_msgs.srv import SpawnModel, GetModelState
 from gazebo_msgs.srv import GetPhysicsProperties, SetPhysicsProperties
 from gazebo_msgs.msg import ODEPhysics
 from geometry_msgs.msg import Pose, Vector3
-from std_msgs.msg import Float64MultiArray
 import tf.transformations as tft
 
 ROBOT_MODEL_NAME = "ur5"
 
-N_BLOCKS = 2
+# ---- spawn settings ----
+N_BLOCKS = 1
 MIN_DIST = 0.07
 MARGIN = 0.02
 
 TABLE_Z = 0.87
-SPAWN_Z = TABLE_Z +0.003
+SPAWN_Z = TABLE_Z + 0.003
 Z_OFFSET = 1.72
 
 # area utile in BASE_LINK (tavolo)
 X_RANGE = (-0.35, 0.30)
 Y_RANGE = (0.10, 0.40)
 
-#zona raggiungibile (in base_link)
-MIN_RXY = 0.22   # sotto questo = troppo vicino alla base
-MAX_RXY = 0.55   # sopra questo = spesso jump/singolarita'
+# zona raggiungibile (in base_link)
+MIN_RXY = 0.22
+MAX_RXY = 0.55
 
-#  “NO GO ZONE” (zona che di solito crea singularity / fold)
 NO_GO_RECT = {
     "x_min": -0.35,
     "x_max": -0.18,
@@ -42,11 +42,18 @@ NO_GO_RECT = {
 MODELS_DIR = os.path.expanduser("~/ros_ws/src/lab_myproject/models")
 
 
+# -------------------------------------------------------
+# UTILS
+# -------------------------------------------------------
 def get_available_models():
-    return [
-        name for name in os.listdir(MODELS_DIR)
-        if os.path.isfile(os.path.join(MODELS_DIR, name, "model.sdf"))
-    ]
+    if not os.path.isdir(MODELS_DIR):
+        return []
+    out = []
+    for name in os.listdir(MODELS_DIR):
+        sdf = os.path.join(MODELS_DIR, name, "model.sdf")
+        if os.path.isfile(sdf):
+            out.append(name)
+    return out
 
 
 def yaw_from_quat(q):
@@ -81,11 +88,14 @@ def sample_xy_base():
 
         return x, y
 
-    # fallback: se non trova niente, torna comunque un punto valido "medio"
     return 0.20, 0.25
 
 
 def base_to_world(get_state_srv, x_b, y_b, z_b, yaw_b):
+    """
+    Converte (base_link) -> world usando la posa del robot in Gazebo.
+    z_b è in base_link, quindi world z = z_b + Z_OFFSET.
+    """
     st = get_state_srv(model_name=ROBOT_MODEL_NAME, relative_entity_name="world")
 
     xr = st.pose.position.x
@@ -111,6 +121,7 @@ def base_to_world(get_state_srv, x_b, y_b, z_b, yaw_b):
 
 
 def world_to_base(get_state_srv, x_w, y_w, z_w, yaw_w):
+    """Converte world -> base_link (per log/debug)."""
     st = get_state_srv(model_name=ROBOT_MODEL_NAME, relative_entity_name="world")
 
     xr = st.pose.position.x
@@ -137,10 +148,17 @@ def random_pose_non_overlapping(existing_xy_base, get_state_srv):
     for _ in range(500):
         x_b, y_b = sample_xy_base()
 
-        if all((x_b-ex)**2 + (y_b-ey)**2 >= MIN_DIST**2 for ex, ey in existing_xy_base):
-            yaw_b = random.uniform(-math.pi, math.pi)
-            pose_w = base_to_world(get_state_srv, x_b, y_b, z_b_spawn, yaw_b)
-            return pose_w, (x_b, y_b)
+        ok = True
+        for ex, ey in existing_xy_base:
+            if (x_b - ex) ** 2 + (y_b - ey) ** 2 < MIN_DIST ** 2:
+                ok = False
+                break
+        if not ok:
+            continue
+
+        yaw_b = random.uniform(-math.pi, math.pi)
+        pose_w = base_to_world(get_state_srv, x_b, y_b, z_b_spawn, yaw_b)
+        return pose_w, (x_b, y_b)
 
     # fallback
     x_b, y_b = sample_xy_base()
@@ -148,7 +166,9 @@ def random_pose_non_overlapping(existing_xy_base, get_state_srv):
     return pose_w, (x_b, y_b)
 
 
-# FIX FISICA GAZEBO 
+# -------------------------------------------------------
+# FIX FISICA GAZEBO (senza modificare i modelli)
+# -------------------------------------------------------
 def fix_gazebo_physics():
     rospy.wait_for_service("/gazebo/get_physics_properties")
     rospy.wait_for_service("/gazebo/set_physics_properties")
@@ -159,28 +179,18 @@ def fix_gazebo_physics():
     cur = getp()
 
     ode = ODEPhysics()
-
-    #  evita “ancoraggi” / corpi che restano congelati
     ode.auto_disable_bodies = False
-
-    #  solver più robusto (contatti più stabili nelle pinze)
     ode.sor_pgs_iters = 200
     ode.sor_pgs_w = 1.2
     ode.sor_pgs_rms_error_tol = 0.0
-
-    # contatto più “morbido”
-    ode.erp = 0.15        # più basso = meno rimbalzo/rigidità
-    ode.cfm = 1e-5        # piccolo >0 = contatti meno “cemento”
-
-    # riduce incastri e compenetrazioni
+    ode.erp = 0.15
+    ode.cfm = 1e-5
     ode.contact_surface_layer = 0.002
     ode.contact_max_correcting_vel = 0.6
-
     ode.max_contacts = 80
 
-    #  timestep più fine = meno tunneling
-    time_step = 0.0005        # 0.5 ms
-    max_update_rate = 2000.0  # 2000 Hz
+    time_step = 0.0005
+    max_update_rate = 2000.0
 
     gravity = cur.gravity if cur.gravity else Vector3(0, 0, -9.81)
 
@@ -189,9 +199,13 @@ def fix_gazebo_physics():
         rospy.loginfo("Gazebo physics forced: dt=%.4f rate=%.0f iters=%d ERP=%.3f CFM=%.1e",
                       time_step, max_update_rate, ode.sor_pgs_iters, ode.erp, ode.cfm)
     else:
-        rospy.logwarn(" Physics not changed: %s", ok.status_message)
+        rospy.logwarn("Physics not changed: %s", ok.status_message)
 
-if __name__ == "__main__":
+
+# -------------------------------------------------------
+# MAIN
+# -------------------------------------------------------
+def main():
     rospy.init_node("spawn_random_blocks")
 
     rospy.wait_for_service("/gazebo/spawn_sdf_model")
@@ -200,19 +214,16 @@ if __name__ == "__main__":
     spawn_srv = rospy.ServiceProxy("/gazebo/spawn_sdf_model", SpawnModel)
     get_state_srv = rospy.ServiceProxy("/gazebo/get_model_state", GetModelState)
 
-    pub_obj_rpy = rospy.Publisher("/vision/object_rpy", Float64MultiArray, queue_size=10)
-    pub_obj_name = rospy.Publisher("/vision/object_name", String, queue_size=10)
-    # forza fisica ogni spawn
     fix_gazebo_physics()
 
     models = get_available_models()
     if not models:
-        rospy.logerr("No models found!")
-        exit(1)
+        rospy.logerr("No models found in %s", MODELS_DIR)
+        return
 
-    rospy.loginfo(f"Available models: {models}")
-    rospy.loginfo(f"Spawn area base_link: X{X_RANGE} Y{Y_RANGE} rxy[{MIN_RXY},{MAX_RXY}]")
-    rospy.loginfo(f"NO-GO rect: {NO_GO_RECT}")
+    rospy.loginfo("Available models: %s", models)
+    rospy.loginfo("Spawn area base_link: X%s Y%s rxy[%.2f,%.2f]", X_RANGE, Y_RANGE, MIN_RXY, MAX_RXY)
+    rospy.loginfo("NO-GO rect: %s", NO_GO_RECT)
 
     spawned_xy_base = []
 
@@ -220,7 +231,8 @@ if __name__ == "__main__":
         model = random.choice(models)
         instance = f"{model}_{uuid.uuid4().hex[:8]}"
 
-        with open(os.path.join(MODELS_DIR, model, "model.sdf")) as f:
+        sdf_path = os.path.join(MODELS_DIR, model, "model.sdf")
+        with open(sdf_path, "r") as f:
             model_xml = f.read()
 
         pose_w, xy_b = random_pose_non_overlapping(spawned_xy_base, get_state_srv)
@@ -234,9 +246,8 @@ if __name__ == "__main__":
             reference_frame="world"
         )
 
-        q = pose_w.orientation
-        yaw_w = yaw_from_quat(q)
-
+        # log in base_link (solo debug, NON pubblichiamo /vision/*)
+        yaw_w = yaw_from_quat(pose_w.orientation)
         x_b, y_b, z_b, yaw_b = world_to_base(
             get_state_srv,
             pose_w.position.x,
@@ -245,21 +256,10 @@ if __name__ == "__main__":
             yaw_w
         )
 
-        msg = Float64MultiArray()
-        msg.data = [x_b, y_b, z_b, math.pi, 0.0, yaw_b]
+        rxy = math.sqrt(x_b*x_b + y_b*y_b)
+        rospy.loginfo("Spawned: %s  base_link x=%.3f y=%.3f z=%.3f rxy=%.3f yaw=%.3f",
+                      instance, x_b, y_b, z_b, rxy, yaw_b)
 
-        # aspetta che il blocco si assesti sul tavolo
-        rospy.sleep(0.4)
 
-        # PUBBLICA PER 1 SECONDO
-        name_msg = String()
-        name_msg.data = model
-        rate = rospy.Rate(10)
-        t0 = rospy.Time.now()
-
-        while (rospy.Time.now() - t0).to_sec() < 1.0:
-            pub_obj_rpy.publish(msg)
-            pub_obj_name.publish(name_msg)
-            rate.sleep()
-
-        rospy.loginfo(f"Spawned: {instance} base_link x={x_b:.3f} y={y_b:.3f} rxy={math.sqrt(x_b*x_b+y_b*y_b):.3f} yaw={yaw_b:.3f}")
+if __name__ == "__main__":
+    main()

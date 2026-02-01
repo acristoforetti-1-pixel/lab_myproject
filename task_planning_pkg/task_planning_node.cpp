@@ -9,7 +9,7 @@
 
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-
+#include <std_msgs/Bool.h>
 #include <kdl/tree.hpp>
 #include <kdl/chain.hpp>
 #include <kdl_parser/kdl_parser.hpp>
@@ -56,6 +56,8 @@ public:
     pnh.param<std::string>("robot_description_param", robot_desc_param_, "/ur5/robot_description");
     pnh.param<std::string>("object_name_topic", obj_name_topic_, "/vision/object_name");
     sub_obj_name_ = nh.subscribe(obj_name_topic_, 1, &PickPlaceIK::objNameCb, this);
+    pnh.param<std::string>("object_uid_topic", obj_uid_topic_, "/vision/object_uid");
+    sub_obj_uid_ = nh.subscribe(obj_uid_topic_, 1, &PickPlaceIK::objUidCb, this);
     pnh.param("ack_timeout", ack_timeout_, 10.0);
 
     pnh.param("z_pre",   z_pre_off_,   0.12);
@@ -124,27 +126,69 @@ public:
     ROS_INFO("  table_z=%.3f z_clear=%.3f", table_z_, z_clear_);
     ROS_INFO("  z_pre=%.3f  z_grasp=%.3f  z_lift=%.3f", z_pre_off_, z_grasp_off_, z_lift_off_);
     ROS_INFO("  hand_open=%.3f hand_close=%.3f", hand_open_, hand_close_);
+    pub_req_ = nh.advertise<std_msgs::Bool>("/vision/request_object", 1, true);
+last_req_ = ros::Time(0);
   }
 
   void spin() {
-    ros::Rate r(50);
-    while (ros::ok()) {
-      ros::spinOnce();
+  ros::Rate r(50);
 
-      geometry_msgs::PoseStamped obj;
-      std::vector<double> q_seed8_raw;
-      {
-        std::lock_guard<std::mutex> lk(mtx_);
-        if (!ik_ready_ || !have_js_ || !have_obj_) { r.sleep(); continue; }
+  while (ros::ok()) {
+    ros::spinOnce();
+
+    geometry_msgs::PoseStamped obj;
+    std::vector<double> q_seed8_raw;
+    std::string uid;
+    bool need_request = false;
+
+    {
+      std::lock_guard<std::mutex> lk(mtx_);
+
+      if (!ik_ready_ || !have_js_) { r.sleep(); continue; }
+
+      if (!have_obj_) {
+        need_request = true;
+      } else {
+        // prendo copia consistente
         obj = obj_pose_base_;
         q_seed8_raw = q_cur_raw_;
-        have_obj_ = false;
-      }
+        uid = current_uid_;          // UID associato all’ultima detection
 
-      doPickPlace(obj, q_seed8_raw);
-      r.sleep();
+        // consumo subito (così non riparte due volte sulla stessa lettura)
+        have_obj_ = false;
+
+        // se UID uguale all’ultimo già processato => ignoro
+        if (!uid.empty() && uid == last_uid_done_) {
+          // non fare nulla: continuerà a richiedere finché cambia UID
+          need_request = true;
+        }
+      }
     }
+
+    if (need_request) {
+      // chiedi max 2 Hz
+      if ((ros::Time::now() - last_req_).toSec() > 0.5) {
+        std_msgs::Bool req;
+        req.data = true;
+        pub_req_.publish(req);
+        last_req_ = ros::Time::now();
+      }
+      r.sleep();
+      continue;
+    }
+
+    // esegui pick&place
+    doPickPlace(obj, q_seed8_raw);
+
+    // marca UID come "fatto" (così non lo riprende)
+    {
+      std::lock_guard<std::mutex> lk(mtx_);
+      if (!uid.empty()) last_uid_done_ = uid;
+    }
+
+    r.sleep();
   }
+}
 
 private:
   static double clamp(double x, double lo, double hi) {
@@ -226,7 +270,10 @@ private:
   std::lock_guard<std::mutex> lk(mtx_);
   last_obj_name_ = msg.data;
 }	
-
+void objUidCb(const std_msgs::String& msg) {
+  std::lock_guard<std::mutex> lk(mtx_);
+  current_uid_ = msg.data;
+}
   void jsCb(const sensor_msgs::JointState& msg) {
     if (msg.name.size() != msg.position.size()) return;
     std::lock_guard<std::mutex> lk(mtx_);
@@ -520,73 +567,195 @@ bool solveBestYawWithChosen(double px, double py, double pz,
   }
 void doPickPlace(const geometry_msgs::PoseStamped& obj, std::vector<double> q_seed8_raw)
 {
-  const double x = obj.pose.position.x;
-  const double y = obj.pose.position.y;
-  const double z = obj.pose.position.z;
+  // -------------------------
+  // Helpers
+  // -------------------------
+  auto safeAck = [&](const char* tag)->bool {
+    if (!waitAck(ack_timeout_)) {
+      ROS_WARN("Ack timeout %s.", tag);
+      return false;
+    }
+    return true;
+  };
 
-  // -------------------------
-  // Safety base radius
-  // -------------------------
-  const double rxy = std::sqrt(x*x + y*y);
-  if (rxy < min_xy_radius_) {
-    ROS_WARN("Object too close to base: r=%.3f < %.3f. Skipping.", rxy, min_xy_radius_);
-    return;
+  auto doOpen = [&](const char* tag)->void {
+    ROS_INFO("Opening gripper (%s) (g=%.3f)", tag, hand_open_);
+    q_gripper_cmd_[0] = hand_open_;
+    q_gripper_cmd_[1] = hand_open_;
+    std::vector<double> q6_raw(6);
+    for (int i = 0; i < 6; ++i) q6_raw[i] = q_seed8_raw[i];
+    publishJointTarget(q6_raw);
+    waitAck(ack_timeout_);
+    waitGripperAt(hand_open_, 0.02, 1.2);
+    ros::Duration(0.05).sleep();
+  };
+
+  auto doClose = [&](double cmd, const char* tag)->void {
+    ROS_INFO("Closing gripper (%s) (g=%.3f)", tag, cmd);
+    q_gripper_cmd_[0] = cmd;
+    q_gripper_cmd_[1] = cmd;
+    std::vector<double> q6_raw(6);
+    for (int i = 0; i < 6; ++i) q6_raw[i] = q_seed8_raw[i];
+    publishJointTarget(q6_raw);
+    waitAck(ack_timeout_);
+    ros::Duration(grasp_settle_s_).sleep();
+  };
+
+  // BEST-YAW + anti-singolarità
+ auto tryMoveBestYaw = [&](double px, double py, double pz, double yaw,
+                          const char* tag, double max_jump)->bool
+{
+  const double yaws[4] = {
+    wrapPi(yaw),
+    wrapPi(yaw + M_PI),
+    wrapPi(yaw + M_PI_2),
+    wrapPi(yaw - M_PI_2)
+  };
+
+  std::vector<double> best_q;
+  double best_cost = 1e9;
+  double bestJ = 1e9;
+
+  for (int k = 0; k < 4; ++k) {
+    std::vector<double> q6;
+    double j = 0.0;
+
+    if (!solveBestYaw(px, py, pz, yaws[k], q_seed8_raw, q6, j)) continue;
+    if (j > max_jump) continue;
+
+    // evita singolarità polso
+    if (nearWristSingularity(q6)) continue;
+
+    // costo: preferisci jump piccolo e q5 lontano da 0
+    const double q5 = q6[4];
+    const double cost = j + 0.8 * (1.0 / (fabs(q5) + 0.08));
+
+    if (cost < best_cost) {
+      best_cost = cost;
+      bestJ = j;
+      best_q = q6;
+    }
   }
 
-  // -------------------------
-  // Z safety (table)
-  // -------------------------
-  const double z_min  = table_z_ + z_clear_;
-  const double z_safe = std::max(z, z_min);
-  const double drop_z_safe = std::max(drop_z_, z_min);
+  if (best_q.empty()) {
+    ROS_WARN("IK failed %s (all yaw branches rejected).", tag);
+    return false;
+  }
+
+  ROS_INFO("Move %s (jump=%.3f)", tag, bestJ);
+  publishJointTarget(best_q);
+  if (!safeAck(tag)) return false;
+
+  q_seed8_raw = makeSeed8(best_q, q_gripper_cmd_);
+  return true;
+};
+
+  auto tryMoveFixedYaw = [&](double px, double py, double pz, double yaw,
+                             const char* tag, double max_jump)->bool
+  {
+    std::vector<double> q6_raw;
+    geometry_msgs::Pose p = makeTopDownPose(px, py, pz, yaw);
+    if (!solveIK(p, q_seed8_raw, q6_raw)) {
+      ROS_WARN("IK failed %s (fixed yaw).", tag);
+      return false;
+    }
+    if (nearWristSingularity(q6_raw)) {
+      ROS_WARN("Near singularity at %s (fixed yaw).", tag);
+      return false;
+    }
+    const double j = jumpNorm6(q6_raw, q_seed8_raw);
+    if (j > max_jump) {
+      ROS_WARN("IK jump too large at %s: %.3f > %.3f.", tag, j, max_jump);
+      return false;
+    }
+
+    ROS_INFO("Move %s (jump=%.3f)", tag, j);
+    publishJointTarget(q6_raw);
+    if (!safeAck(tag)) return false;
+
+    q_seed8_raw = makeSeed8(q6_raw, q_gripper_cmd_);
+    return true;
+  };
+
+  auto retreatSafe = [&](double z_safe, double yaw)->void {
+    const double z_up = z_safe + 0.32;
+    tryMoveBestYaw(0.15, 0.20, z_up, yaw, "retreat_safe", 6.5);
+  };
 
   // -------------------------
-  // Read object name (class)
+  // Read object pose
+  // -------------------------
+  const double x_in = obj.pose.position.x;
+  const double y_in = obj.pose.position.y;
+  const double z_in = obj.pose.position.z;
+
+  // -------------------------
+  // Object name / class
   // -------------------------
   std::string obj_name;
   {
     std::lock_guard<std::mutex> lk(mtx_);
     obj_name = last_obj_name_;
   }
-
   int Xc=0, Yc=0, Zc=0;
   int class_id = -1;
-  if (parseXYZ(obj_name, Xc, Yc, Zc)) {
-    class_id = classIdFromXYZ(Xc, Yc, Zc);
+  if (parseXYZ(obj_name, Xc, Yc, Zc)) class_id = classIdFromXYZ(Xc, Yc, Zc);
+
+  // -------------------------
+  // Yaw from perception pose
+  // -------------------------
+  double rr, pp, yaw_obj;
+  {
+    tf2::Quaternion qtmp;
+    tf2::fromMsg(obj.pose.orientation, qtmp);
+    tf2::Matrix3x3(qtmp).getRPY(rr, pp, yaw_obj);
+  }
+  yaw_obj = wrapPi(yaw_obj);
+
+  // -------------------------
+  // Safety: radius
+  // -------------------------
+  const double rxy = std::sqrt(x_in*x_in + y_in*y_in);
+  if (rxy < min_xy_radius_) {
+    ROS_WARN("Object too close to base: r=%.3f < %.3f. Skipping.", rxy, min_xy_radius_);
+    return;
   }
 
   // -------------------------
-  // Approach heights (default)
+  // Z safety plane
   // -------------------------
-  double z_pre_high = z_safe + z_pre_off_ + 0.10;
+  const double z_min  = table_z_ + z_clear_;
+  const double z_safe = std::max(z_in, z_min);
+  const double drop_z_safe = std::max(drop_z_, z_min);
+
+  // -------------------------
+  // Heights (con micro-down)
+  // -------------------------
+  double z_pre_high = z_safe + z_pre_off_ + 0.12;
   double z_pre      = z_safe + z_pre_off_;
   double z_grasp    = z_safe + z_grasp_off_;
+  
+  // vuoi scendere un filo in più al pick:
+  const double pick_extra_down = 0.008;       // 8mm
+  z_grasp -= pick_extra_down;                 // micro-down base
 
-  // Soft safety: allow going a bit below z_min (needed to really touch blocks)
-  const double z_grasp_min = z_min - 0.020;   // allow 2cm under table safety plane
-  const double z_pre_min   = z_min + 0.010;
+  const double z_grasp_min = z_min - 0.010;   // max 1cm sotto safety plane
+  const double z_pre_min   = z_min + 0.015;
   z_grasp = std::max(z_grasp, z_grasp_min);
   z_pre   = std::max(z_pre,   z_pre_min);
 
-  // If 2x2 (class 6): grasp a bit higher to avoid pressing it into the table
-  if (class_id == 6) {
-    z_grasp += 0.012;   // +12mm
-    z_pre   += 0.010;
-  }
-
   // -------------------------
-  // Gripper close command
+  // Close commands
   // -------------------------
   double close_cmd_first = hand_close_;
   double close_cmd_final = hand_close_;
-
   if (class_id == 6) {
-    close_cmd_first =  0.0;   // soft initial squeeze
-    close_cmd_final = -0.04;   // final squeeze after micro lift
+    close_cmd_first = 0.20;
+    close_cmd_final = 0.10;
   }
 
   // -------------------------
-  // Drop Y per class (edit here)
+  // Drop Y per class
   // -------------------------
   auto dropYForClass = [&](int cid)->double {
     switch (cid) {
@@ -601,185 +770,117 @@ void doPickPlace(const geometry_msgs::PoseStamped& obj, std::vector<double> q_se
     }
   };
 
-  // X of place always fixed
   const double drop_x_eff = drop_x_;
-  double drop_y_eff = dropYForClass(class_id);
-
-  // rxy sanity check for drop
-  const double r_drop = std::sqrt(drop_x_eff*drop_x_eff + drop_y_eff*drop_y_eff);
-  if (r_drop < 0.20 || r_drop > 0.65) {
-    ROS_WARN("Drop rxy unsafe (r=%.3f). Forcing safe drop_y=%.3f", r_drop, drop_y_);
-    drop_y_eff = drop_y_;
-  }
+  const double drop_y_eff = dropYForClass(class_id);
 
   // -------------------------
-  // Object yaw
+  // Decide yaw (auto)
+  // Provo yaw_obj e yaw_obj+pi/2 (e anche +pi) e scelgo quello con IK migliore.
   // -------------------------
-  double rr, pp, yaw_obj;
-  {
-    tf2::Quaternion qtmp;
-    tf2::fromMsg(obj.pose.orientation, qtmp);
-    tf2::Matrix3x3(qtmp).getRPY(rr, pp, yaw_obj);
-  }
+  auto pickYawAuto = [&](double px, double py, double pz, double &yaw_out)->bool {
+    struct Cand { double yaw; double jump; std::vector<double> q6; };
+    std::vector<Cand> good;
 
-  const double yaw_grasp = wrapPi(yaw_obj + M_PI/2.0);
+    auto eval = [&](double yaw_try){
+      std::vector<double> q6;
+      double bestJ = 0.0;
+      if (!solveBestYaw(px, py, pz, yaw_try, q_seed8_raw, q6, bestJ)) return;
+      if (nearWristSingularity(q6)) return;
+      good.push_back({wrapPi(yaw_try), bestJ, q6});
+    };
+
+    // due famiglie: yaw e yaw+pi/2, entrambe con flip +pi
+    eval(yaw_obj);
+    eval(wrapPi(yaw_obj + M_PI));
+    eval(wrapPi(yaw_obj + M_PI/2.0));
+    eval(wrapPi(yaw_obj + M_PI/2.0 + M_PI));
+
+    if (good.empty()) return false;
+    std::sort(good.begin(), good.end(), [](const Cand& a, const Cand& b){ return a.jump < b.jump; });
+
+    yaw_out = good.front().yaw;
+    return true;
+  };
+
+  double yaw_grasp = 0.0;
+  if (!pickYawAuto(x_in, y_in, z_pre, yaw_grasp)) {
+    ROS_WARN("Yaw auto selection failed -> fallback yaw_obj");
+    yaw_grasp = yaw_obj;
+  }
   const double yaw_place = 0.0;
 
-  ROS_WARN("OBJ base_link x=%.3f y=%.3f z=%.3f (z_safe=%.3f) yaw_obj=%.3f class=%d name=%s -> DROP x=%.3f y=%.3f",
-           x, y, z, z_safe, yaw_obj, class_id, obj_name.c_str(), drop_x_eff, drop_y_eff);
+  ROS_WARN("OBJ base_link x=%.3f y=%.3f z=%.3f (z_safe=%.3f) yaw_obj=%.3f yaw_grasp=%.3f class=%d name=%s -> DROP x=%.3f y=%.3f",
+           x_in, y_in, z_in, z_safe, yaw_obj, yaw_grasp, class_id, obj_name.c_str(), drop_x_eff, drop_y_eff);
 
-  // ------------------------------------------------------------
-  // Helper: moveTo BEST yaw (yaw or yaw+pi) for pick/carry
-  // ------------------------------------------------------------
-  auto moveToBestYaw = [&](double px, double py, double pz, double yaw,
-                           const char* tag, double max_jump)->bool
-  {
-    std::vector<double> q6_raw;
-    double bestJ = 0.0;
-
-    if (!solveBestYaw(px, py, pz, yaw, q_seed8_raw, q6_raw, bestJ)) {
-      ROS_WARN("IK failed %s.", tag);
-      return false;
-    }
-    if (bestJ > max_jump) {
-      ROS_WARN("IK jump too large at %s: %.3f > %.3f (reject).", tag, bestJ, max_jump);
-      return false;
-    }
-
-    ROS_INFO("Move %s (jump=%.3f)", tag, bestJ);
-    publishJointTarget(q6_raw);
-
-    if (!waitAck(ack_timeout_)) {
-      ROS_WARN("Ack timeout %s.", tag);
-      return false;
-    }
-
-    q_seed8_raw = makeSeed8(q6_raw, q_gripper_cmd_);
-    return true;
-  };
-
-  // ------------------------------------------------------------
-  // Helper: moveTo FIXED yaw for place yaw=0
-  // ------------------------------------------------------------
-  auto moveToFixedYaw = [&](double px, double py, double pz, double yaw,
-                            const char* tag, double max_jump)->bool
-  {
-    std::vector<double> q6_raw;
-
-    geometry_msgs::Pose p = makeTopDownPose(px, py, pz, yaw);
-    if (!solveIK(p, q_seed8_raw, q6_raw)) {
-      ROS_WARN("IK failed %s (fixed yaw).", tag);
-      return false;
-    }
-    if (nearWristSingularity(q6_raw)) {
-      ROS_WARN("Near singularity at %s (fixed yaw).", tag);
-      return false;
-    }
-
-    const double j = jumpNorm6(q6_raw, q_seed8_raw);
-    if (j > max_jump) {
-      ROS_WARN("IK jump too large at %s: %.3f > %.3f (reject).", tag, j, max_jump);
-      return false;
-    }
-
-    ROS_INFO("Move %s (jump=%.3f)", tag, j);
-    publishJointTarget(q6_raw);
-
-    if (!waitAck(ack_timeout_)) {
-      ROS_WARN("Ack timeout %s.", tag);
-      return false;
-    }
-
-    q_seed8_raw = makeSeed8(q6_raw, q_gripper_cmd_);
-    return true;
-  };
-
-  // ------------------------------------------------------------
+  // -------------------------
   // OPEN PRE
-  // ------------------------------------------------------------
-  ROS_INFO("Opening gripper (pre) (g=%.3f)", hand_open_);
-  q_gripper_cmd_[0] = hand_open_;
-  q_gripper_cmd_[1] = hand_open_;
-  {
-    std::vector<double> q6_raw(6);
-    for (int i = 0; i < 6; ++i) q6_raw[i] = q_seed8_raw[i];
-    publishJointTarget(q6_raw);
-    waitAck(ack_timeout_);
-    ros::Duration(0.03).sleep();
-  }
-
-  // ------------------------------------------------------------
-  // APPROACH PICK (anti-sing for negative X)
-  // ------------------------------------------------------------
+  // -------------------------
+  doOpen("pre");
+// waypoint neutro alto (riduce jump e singolarità)
+const double z_neutral = z_safe + 0.35;
+tryMoveBestYaw(0.20, 0.20, z_neutral, yaw_grasp, "neutral_high", 6.5);
+  // -------------------------
+  // Approach strategy (stabilizza se x vicino base)
+  // -------------------------
   const double x_front = 0.10;
   const double x_mid0  = 0.00;
   const double x_midN  = -0.12;
 
+  double x = x_in;
+  double y = y_in;
+
   if (x < 0.05) {
-    if (!moveToBestYaw(x_front, y, z_pre_high, yaw_grasp, "pre_approach_front", 4.5)) return;
-    if (!moveToBestYaw(x_mid0,  y, z_pre_high, yaw_grasp, "pre_step_center",    4.5)) return;
-    if (!moveToBestYaw(x_midN,  y, z_pre_high, yaw_grasp, "pre_step_left",      4.5)) return;
+    if (!tryMoveBestYaw(x_front, y, z_pre_high, yaw_grasp, "pre_approach_front", 6.0)) return;
+    if (!tryMoveBestYaw(x_mid0,  y, z_pre_high, yaw_grasp, "pre_step_center",    6.0)) return;
+    if (!tryMoveBestYaw(x_midN,  y, z_pre_high, yaw_grasp, "pre_step_left",      6.0)) return;
   }
 
-  if (!moveToBestYaw(x, y, z_pre_high, yaw_grasp, "pregrasp_high", 4.5)) return;
-  if (!moveToBestYaw(x, y, z_pre,      yaw_grasp, "pregrasp",      ik_max_jump_)) return;
+  if (!tryMoveBestYaw(x, y, z_pre_high, yaw_grasp, "pregrasp_high", 6.0)) return;
+  if (!tryMoveBestYaw(x, y, z_pre,      yaw_grasp, "pregrasp",      6.0)) return;
 
-  // ------------------------------------------------------------
-  // GRASP + optional retry if empty
-  // ------------------------------------------------------------
-  auto doCloseHold = [&](double cmd, const char* tag)->void {
-    ROS_INFO("Closing gripper (%s) (g=%.3f)", tag, cmd);
-    q_gripper_cmd_[0] = cmd;
-    q_gripper_cmd_[1] = cmd;
-    std::vector<double> q6_raw(6);
-    for (int i = 0; i < 6; ++i) q6_raw[i] = q_seed8_raw[i];
-    publishJointTarget(q6_raw);
-    waitAck(ack_timeout_);
-    ros::Duration(grasp_settle_s_).sleep();
-  };
-
-  // go to grasp pose
-  if (!moveToBestYaw(x, y, z_grasp, yaw_grasp, "grasp", ik_max_jump_)) return;
-
-  // close first
-  doCloseHold(close_cmd_first, "hold1");
-
-  // if it fully closes, likely empty grasp -> retry once slightly deeper (except class 6 we are careful)
-  bool likely_empty = waitGripperAt(close_cmd_first, 0.02, 0.6);
-  if (likely_empty && class_id != 6) {
-    ROS_WARN("Grasp likely empty -> retry deeper once");
-    const double z_retry = z_grasp - 0.006;  // 6mm deeper
-    if (!moveToBestYaw(x, y, z_retry, yaw_grasp, "grasp_retry", ik_max_jump_)) return;
-    doCloseHold(close_cmd_first, "hold1_retry");
+  // -------------------------
+  // GRASP (con micro-down extra se possibile)
+  // -------------------------
+  if (!tryMoveBestYaw(x, y, z_grasp, yaw_grasp, "grasp", 6.0)) {
+    ROS_WARN("grasp IK failed -> retreat");
+    retreatSafe(z_safe, yaw_grasp);
+    return;
   }
 
-  // ------------------------------------------------------------
-  // MICRO LIFT + (for 2x2) final close after micro-lift
-  // ------------------------------------------------------------
-  const double z_micro = z_safe + 0.08;
-  if (!moveToBestYaw(x, y, z_micro, yaw_grasp, "micro_lift", ik_max_jump_)) return;
-
-  if (class_id == 6) {
-    doCloseHold(close_cmd_final, "hold2_final");
+  // ulteriore micro-down “solo se safe e IK ok”
+  {
+    const double z_deeper = std::max(z_grasp - 0.006, z_grasp_min); // altri 6mm max
+    if (z_deeper < z_grasp - 1e-4) {
+      tryMoveBestYaw(x, y, z_deeper, yaw_grasp, "grasp_deeper", 6.0);
+    }
   }
 
-  if (!moveToBestYaw(x, y, z_safe + z_lift_off_, yaw_grasp, "lift", ik_max_jump_)) return;
+  doClose(close_cmd_first, "hold1");
+  if (class_id == 6) doClose(close_cmd_final, "hold2_final");
 
-  // ------------------------------------------------------------
-  // CARRY UP
-  // ------------------------------------------------------------
-  const double z_carry = z_safe + 0.30;
-  if (!moveToBestYaw(x, y, z_carry, yaw_grasp, "carry_up", ik_max_jump_)) return;
+  // -------------------------
+  // POST-GRASP: salita UNA VOLTA (no su/giu inutili) + NO carry_mid
+  // -------------------------
+  const double z_detach = z_safe + 0.12;
+  const double z_carry  = z_safe + 0.30;
 
-  // waypoint mid (stabilizza)
-  const double x_mid = 0.25;
-  moveToBestYaw(x_mid, y, z_carry, yaw_grasp, "carry_mid", 4.5);
+  if (!tryMoveBestYaw(x, y, z_detach, yaw_grasp, "detach_up", 6.5)) {
+    ROS_WARN("detach_up failed -> retreat");
+    retreatSafe(z_safe, yaw_grasp);
+    return;
+  }
+  if (!tryMoveBestYaw(x, y, z_carry, yaw_grasp, "carry_up", 6.5)) {
+    ROS_WARN("carry_up failed -> retreat");
+    retreatSafe(z_safe, yaw_grasp);
+    return;
+  }
 
-  // ------------------------------------------------------------
-  // SAFE LANE (avoid flips between Y+ and Y-)
-  // ------------------------------------------------------------
- const double y_lane = 0.20;
+  // -------------------------
+  // SAFE LANE (stabile, evita singolarità del carry_mid)
+  // -------------------------
+  const double y_lane = 0.20;
 
+<<<<<<< HEAD
 
 if (!moveToBestYaw(0.15, y, z_carry, yaw_grasp, "carry_forward_safe", 1.5)) return;
 
@@ -789,55 +890,82 @@ if (!moveToBestYaw(0.15, y_lane, z_carry, yaw_grasp, "carry_to_lane", 1.5)) retu
 
 if (!moveToBestYaw(drop_x_eff, y_lane,     z_carry, yaw_grasp, "carry_lane_safeY",     1.8)) return;
 if (!moveToBestYaw(drop_x_eff, drop_y_eff, z_carry, yaw_grasp, "carry_lane_to_dropY",  1.8)) return;
-
-  // align yaw=0 on top of drop
-  if (!moveToFixedYaw(drop_x_eff, drop_y_eff, z_carry, yaw_place, "yaw_align_place", 4.5)) {
-    ROS_WARN("yaw_align_place failed -> trying yaw=pi fallback");
-    if (!moveToFixedYaw(drop_x_eff, drop_y_eff, z_carry, wrapPi(yaw_place + M_PI), "yaw_align_place_pi", 4.5)) return;
+=======
+  // 1) vai avanti a x=0.15 mantenendo y (riduce jump)
+  if (!tryMoveBestYaw(0.15, y, z_carry, yaw_grasp, "carry_forward_safe", 4.0)) {
+    ROS_WARN("carry_forward_safe failed -> retreat");
+    retreatSafe(z_safe, yaw_grasp);
+    return;
   }
 
-  // ------------------------------------------------------------
-  // PLACE higher (not on the ground/table)
-  // ------------------------------------------------------------
-  if (!moveToFixedYaw(drop_x_eff, drop_y_eff, drop_z_safe + place_pre_up_, yaw_place, "place_pre", 4.5)) return;
+  // 2) entra in corsia y_lane
+  if (!tryMoveBestYaw(0.15, y_lane, z_carry, yaw_grasp, "carry_to_lane", 4.0)) {
+    ROS_WARN("carry_to_lane failed -> retreat");
+    retreatSafe(z_safe, yaw_grasp);
+    return;
+  }
 
-  // place height: higher than before
-  const double z_place = drop_z_safe + 0.030;   // 3 cm above table plane
-  if (!moveToFixedYaw(drop_x_eff, drop_y_eff, z_place, yaw_place, "place", 4.5)) return;
+  // 3) vai al drop x e y
+  if (!tryMoveBestYaw(drop_x_eff, y_lane, z_carry, yaw_grasp, "carry_lane_safeY", 4.5)) {
+    ROS_WARN("carry_lane_safeY failed -> retreat");
+    retreatSafe(z_safe, yaw_grasp);
+    return;
+  }
+  if (!tryMoveBestYaw(drop_x_eff, drop_y_eff, z_carry, yaw_grasp, "carry_lane_to_dropY", 4.5)) {
+    ROS_WARN("carry_lane_to_dropY failed -> retreat");
+    retreatSafe(z_safe, yaw_grasp);
+    return;
+  }
+>>>>>>> Caricamento iniziale / aggiornamento
+
+  // -------------------------
+  // ALIGN PLACE YAW (0)
+  // -------------------------
+  if (!tryMoveFixedYaw(drop_x_eff, drop_y_eff, z_carry, yaw_place, "yaw_align_place", 6.5)) {
+    ROS_WARN("yaw_align_place failed -> try yaw=pi");
+    if (!tryMoveFixedYaw(drop_x_eff, drop_y_eff, z_carry, wrapPi(yaw_place + M_PI), "yaw_align_place_pi", 6.5)) {
+      ROS_WARN("yaw align failed -> retreat");
+      retreatSafe(z_safe, yaw_grasp);
+      return;
+    }
+  }
+
+  // -------------------------
+  // PLACE
+  // -------------------------
+  const double z_place_pre = drop_z_safe + place_pre_up_;
+  if (!tryMoveFixedYaw(drop_x_eff, drop_y_eff, z_place_pre, yaw_place, "place_pre", 6.5)) {
+    ROS_WARN("place_pre failed -> retreat (keep object)");
+    retreatSafe(z_safe, yaw_grasp);
+    return;
+  }
+
+  const double z_place = drop_z_safe + 0.050;
+  tryMoveFixedYaw(drop_x_eff, drop_y_eff, z_place, yaw_place, "place", 6.5);
 
   ros::Duration(0.08).sleep();
 
-  // ------------------------------------------------------------
-  // OPEN RELEASE
-  // ------------------------------------------------------------
-  ROS_INFO("Opening gripper (release) (g=%.3f)", hand_open_);
-  q_gripper_cmd_[0] = hand_open_;
-  q_gripper_cmd_[1] = hand_open_;
-  {
-    std::vector<double> q6_raw(6);
-    for (int i = 0; i < 6; ++i) q6_raw[i] = q_seed8_raw[i];
-    publishJointTarget(q6_raw);
-    waitAck(ack_timeout_);
-    waitGripperAt(hand_open_, 0.02, 1.0);
-    ros::Duration(0.03).sleep();
-  }
+  doOpen("release");
 
-  // peel-off upwards
-  moveToFixedYaw(drop_x_eff, drop_y_eff, z_place + 0.020, yaw_place, "release_up_small", 4.5);
-  moveToFixedYaw(drop_x_eff, drop_y_eff, z_place + 0.120, yaw_place, "detach_up",        4.5);
+  // detach deciso
+  tryMoveFixedYaw(drop_x_eff, drop_y_eff, z_place + 0.140, yaw_place, "detach_up_after_release", 6.5);
+  tryMoveFixedYaw(drop_x_eff, y_lane, z_carry, yaw_place, "retreat_lane", 6.5);
 
-  // retreat to lane to avoid next pick flipping
-  moveToFixedYaw(drop_x_eff, y_lane, z_carry, yaw_place, "retreat_lane", 4.5);
-
-  ROS_INFO("Pick&place done. class=%d name=%s drop=(%.3f,%.3f) placeYaw=0 z_place=%.3f",
-           class_id, obj_name.c_str(), drop_x_eff, drop_y_eff, z_place);
+  ROS_INFO("Pick&place done. class=%d name=%s pick=(%.3f,%.3f) drop=(%.3f,%.3f) yaw_obj=%.3f yaw_grasp=%.3f z_grasp=%.3f z_place=%.3f",
+           class_id, obj_name.c_str(), x, y, drop_x_eff, drop_y_eff, yaw_obj, yaw_grasp, z_grasp, z_place);
 }
   // ---------- Members ----------
   std::mutex mtx_;
-
+  ros::Publisher pub_req_;
+  ros::Time last_req_;
   std::string obj_name_topic_;
   ros::Subscriber sub_obj_name_;
   std::string last_obj_name_;
+  // UID anti-repeat
+std::string obj_uid_topic_;
+ros::Subscriber sub_obj_uid_;
+std::string current_uid_;
+std::string last_uid_done_;
 
   std::string joint_limits_yaml_;
   double min_xy_radius_ = 0.15;
