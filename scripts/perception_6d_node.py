@@ -58,7 +58,9 @@ class Perception6DNode:
           * minAreaRect -> yaw_long (asse lungo)
           * fallback PCA major axis -> yaw_long
           * output yaw_mode: "long" (default) o "short" (+90°)
-          * yaw_tool_offset: offset fisso (deg/rad) per allineare col tool reale
+          * yaw_tool_offset: offset fisso (rad) per allineare col tool reale
+          * yaw SNAP opzionale (es: 90°) per evitare jitter/ambiguità
+          * outlier reject in request-mode (yaw sporchi non rovinano la mediana)
       - request-mode:
           * NON resetta se arrivano request ripetute mentre pending
           * pubblica entro max_wait se ha min_frames (no attese infinite)
@@ -146,7 +148,7 @@ class Perception6DNode:
         self.estimate_yaw = bool(rospy.get_param("~estimate_yaw", True))
 
         # output:
-        #  - "long"  -> yaw asse lungo (DEFAULT consigliato per evitare mismatch col gripper)
+        #  - "long"  -> yaw asse lungo (DEFAULT)
         #  - "short" -> yaw asse corto (= long + 90°)
         self.yaw_mode = str(rospy.get_param("~yaw_mode", "long")).strip().lower()
         if self.yaw_mode not in ("long", "short"):
@@ -155,9 +157,14 @@ class Perception6DNode:
         # offset tool fisso (radianti). Se vuoi 90°: 1.5708
         self.yaw_tool_offset = float(rospy.get_param("~yaw_tool_offset", 0.0))
 
+        # SNAP yaw (riduce jitter / ambiguità) – default ON a 90°
+        self.yaw_snap_enable = bool(rospy.get_param("~yaw_snap_enable", True))
+        self.yaw_snap_step = float(rospy.get_param("~yaw_snap_step", math.pi / 2.0))  # 90°
+        self.yaw_outlier_deg = float(rospy.get_param("~yaw_outlier_deg", 25.0))       # request-mode reject
+
         # minAreaRect (OBB) robusto
         self.yaw_use_rect = bool(rospy.get_param("~yaw_use_rect", True))
-        self.yaw_rect_min_aspect = float(rospy.get_param("~yaw_rect_min_aspect", 1.07))  # più basso = più spesso “valido”
+        self.yaw_rect_min_aspect = float(rospy.get_param("~yaw_rect_min_aspect", 1.07))
         self.yaw_rect_min_pts = int(rospy.get_param("~yaw_rect_min_pts", 120))
 
         # fallback PCA major
@@ -168,8 +175,8 @@ class Perception6DNode:
         # usa punti obj completi per yaw (consigliato)
         self.yaw_use_obj_points = bool(rospy.get_param("~yaw_use_obj_points", True))
 
-        # smoothing leggero dello yaw (anti jitter)
-        self.yaw_smooth = bool(rospy.get_param("~yaw_smooth", True))
+        # smoothing leggero dello yaw (anti jitter) – ATTENZIONE: con snap spesso puoi spegnerlo
+        self.yaw_smooth = bool(rospy.get_param("~yaw_smooth", False))
         self.yaw_smooth_alpha = float(rospy.get_param("~yaw_smooth_alpha", 0.35))
         self._yaw_last = None  # yaw filtrato (rad)
 
@@ -223,14 +230,14 @@ class Perception6DNode:
                       self.bbox_shrink, self.top_keep_percentile, self.dense_bin_size, self.xy_inlier_r,
                       self.grasp_bias_x, self.grasp_bias_y)
 
-        rospy.logwarn("[perception6d] yaw estimate=%s mode=%s tool_offset=%.3f rect=%s asp>=%.2f pca=%s anis>=%.2f use_obj=%s smooth=%s",
+        rospy.logwarn("[perception6d] yaw estimate=%s mode=%s tool_offset=%.3f snap=%s step=%.3f outlier=%.1fdeg rect=%s asp>=%.2f pca=%s anis>=%.2f use_obj=%s smooth=%s",
                       str(self.estimate_yaw), self.yaw_mode, self.yaw_tool_offset,
+                      str(self.yaw_snap_enable), self.yaw_snap_step, self.yaw_outlier_deg,
                       str(self.yaw_use_rect), self.yaw_rect_min_aspect,
                       str(self.yaw_use_pca), self.yaw_min_anisotropy,
                       str(self.yaw_use_obj_points), str(self.yaw_smooth))
 
     def _on_shutdown(self):
-        # best effort cleanup (evita crash brutali)
         try:
             cv2.destroyAllWindows()
         except Exception:
@@ -240,7 +247,7 @@ class Perception6DNode:
         except Exception:
             pass
         try:
-            import torch  # optional
+            import torch
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
         except Exception:
@@ -268,6 +275,9 @@ class Perception6DNode:
         self._req_start_t = now
         self._req_deadline = now + rospy.Duration(self.request_timeout_s)
         self._req_buf.clear()
+
+        # reset filtro yaw: evita trascinamento tra oggetti
+        self._yaw_last = None
 
         rospy.loginfo("[perception6d] request received -> median over %d frames (min=%d, max_wait=%.2fs, timeout %.1fs)",
                       self.req_collect_N, self.req_min_frames, self.req_max_wait_s, self.request_timeout_s)
@@ -562,23 +572,41 @@ class Perception6DNode:
         self._last_pub = rospy.Time.now()
         return True
 
+    @staticmethod
+    def _snap_angle(a: float, step: float) -> float:
+        if step is None or step <= 1e-6:
+            return wrap_pi(a)
+        return wrap_pi(round(a / step) * step)
+
     def _apply_yaw_mode_and_offset(self, yaw_long: float) -> float:
-        yaw = yaw_long
+        yaw = float(yaw_long)
+
+        # long/short
         if self.yaw_mode == "short":
             yaw = wrap_pi(yaw + math.pi / 2.0)
+
+        # tool offset
         yaw = wrap_pi(yaw + self.yaw_tool_offset)
 
-        # smoothing (in spazio circolare)
+        # snap (prima del filtro)
+        if self.yaw_snap_enable:
+            yaw = self._snap_angle(yaw, self.yaw_snap_step)
+
+        # smoothing (spazio circolare)
         if self.yaw_smooth:
             if self._yaw_last is None:
                 self._yaw_last = yaw
             else:
-                # interp circolare verso yaw
-                a = self.yaw_smooth_alpha
+                a = float(self.yaw_smooth_alpha)
                 s = (1.0 - a) * math.sin(self._yaw_last) + a * math.sin(yaw)
                 c = (1.0 - a) * math.cos(self._yaw_last) + a * math.cos(yaw)
                 self._yaw_last = wrap_pi(math.atan2(s, c))
-            return float(self._yaw_last)
+            yaw = float(self._yaw_last)
+
+            # snap anche dopo smoothing (per mantenere valori puliti)
+            if self.yaw_snap_enable:
+                yaw = self._snap_angle(yaw, self.yaw_snap_step)
+
         return float(yaw)
 
     # ---------------- main callback ----------------
@@ -593,6 +621,7 @@ class Perception6DNode:
                           self.request_timeout_s, len(self._req_buf))
             self._req_pending = False
             self._req_buf.clear()
+            self._yaw_last = None  # reset anche qui
 
         try:
             color = self.bridge.imgmsg_to_cv2(color_msg, desired_encoding="bgr8")
@@ -639,15 +668,18 @@ class Perception6DNode:
             results = self.model.predict(source=color, conf=self.conf_thresh, imgsz=640, verbose=False)
             if not results:
                 self._publish_debug(debug_img, cam_frame)
+                self._yaw_last = None
                 return
             res = results[0]
         except Exception:
             self._publish_debug(debug_img, cam_frame)
+            self._yaw_last = None
             return
 
         boxes_xyxy = getattr(res.boxes, "xyxy", None)
         if boxes_xyxy is None:
             self._publish_debug(debug_img, cam_frame)
+            self._yaw_last = None
             return
         boxes_xyxy = np.array(boxes_xyxy)
 
@@ -879,6 +911,7 @@ class Perception6DNode:
         else:
             self._best = None
             self._have_best = False
+            self._yaw_last = None  # reset filtro se non vede nulla
 
         # log periodico
         now = rospy.Time.now()
@@ -899,7 +932,7 @@ class Perception6DNode:
                 self._publish_once(self._best)
             return
 
-        # request-mode: accumula frame e pubblica mediana (veloce)
+        # request-mode: accumula frame e pubblica mediana
         if self._req_pending and self._have_best:
             p = self._best["pose"].pose.position
             self._req_buf.append((
@@ -923,10 +956,25 @@ class Perception6DNode:
                 y_med = float(np.median(ys))
                 z_med = float(np.median(zs))
 
-                # yaw: mediana "circolare" robusta
-                s = float(np.median(np.sin(yaws)))
-                c = float(np.median(np.cos(yaws)))
-                yaw_med = wrap_pi(math.atan2(s, c))
+                # yaw: mediana circolare + outlier reject
+                s0 = float(np.median(np.sin(yaws)))
+                c0 = float(np.median(np.cos(yaws)))
+                yaw0 = wrap_pi(math.atan2(s0, c0))
+
+                thr = math.radians(float(self.yaw_outlier_deg))
+                keep = np.array([abs(wrap_pi(float(yy) - yaw0)) < thr for yy in yaws], dtype=bool)
+
+                if np.count_nonzero(keep) >= max(2, int(0.6 * yaws.size)):
+                    yk = yaws[keep]
+                    s = float(np.median(np.sin(yk)))
+                    c = float(np.median(np.cos(yk)))
+                    yaw_med = wrap_pi(math.atan2(s, c))
+                else:
+                    yaw_med = yaw0
+
+                # snap finale (stesso schema del frame singolo)
+                if self.yaw_snap_enable:
+                    yaw_med = self._snap_angle(yaw_med, self.yaw_snap_step)
 
                 name_out = self._best["name"]
                 conf_out = float(np.max(confs))
@@ -941,15 +989,16 @@ class Perception6DNode:
                 best_pub = dict(self._best)
                 best_pub["pose"] = pose
                 best_pub["conf"] = conf_out
-                best_pub["yaw"] = yaw_med
+                best_pub["yaw"] = float(yaw_med)
                 best_pub["name"] = name_out
 
                 if self._publish_once(best_pub):
                     zt = "None" if best_pub["z_table"] is None else f"{best_pub['z_table']:.3f}"
                     rospy.loginfo("[perception6d] PUBLISHED request median (%d frames, %.2fs) name=%s conf=%.2f pos=(%.3f,%.3f,%.3f) yaw=%.3f z_table=%s",
-                                  len(self._req_buf), elapsed, name_out, conf_out, x_med, y_med, z_med, yaw_med, zt)
+                                  len(self._req_buf), elapsed, name_out, conf_out, x_med, y_med, z_med, float(yaw_med), zt)
                     self._req_pending = False
                     self._req_buf.clear()
+                    self._yaw_last = None  # reset per prossima richiesta
 
     def spin(self):
         rospy.spin()
@@ -961,5 +1010,4 @@ if __name__ == "__main__":
     except rospy.ROSInterruptException:
         pass
     except Exception:
-        # evita abort brutali su shutdown
         pass
