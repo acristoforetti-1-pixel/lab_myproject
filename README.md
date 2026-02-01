@@ -60,19 +60,17 @@ U will need a minimum of 2 terminals:
 2.  rosrun lab_myproject perception_6d_node.py \
   _publish_on_request:=true \
   _latch_vision:=true \
+  _estimate_yaw:=true \
+  _yaw_use_rect:=true \
+  _yaw_rect_min_aspect:=1.10 \
+  _yaw_min_anisotropy:=1.15 \
+  _yaw_use_obj_points:=true \
   _req_collect_N:=5 \
   _req_min_frames:=2 \
   _req_max_wait:=0.90 \
   _request_timeout:=4.0 \
-  _estimate_yaw:=true \
-  _yaw_min_anisotropy:=1.25 \
-  _bbox_shrink:=0.12 \
-  _top_keep_percentile:=70.0 \
-  _dense_bin_size:=0.008 \
-  _xy_inlier_r:=0.040 \
-  _grasp_bias_x:=0.000 \
-  _grasp_bias_y:=0.010 \
   _debug_enable:=true
+
 
 to see the prediction on RVIZ u will need to press:
 Add → Image
