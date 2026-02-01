@@ -57,21 +57,7 @@ U will need a minimum of 2 terminals:
 
 2.  rosrun lab_myproject spawn_random_blocks.py
 
-2. rosrun lab_myproject perception_6d_node.py \
-  _publish_on_request:=true \
-  _latch_vision:=true \
-  _request_timeout:=4.0 \
-  _req_collect_N:=5 \
-  _req_min_frames:=2 \
-  _req_max_wait:=0.90 \
-  _estimate_yaw:=true \
-  _yaw_use_rect:=true \
-  _yaw_rect_min_aspect:=1.10 \
-  _yaw_use_pca:=true \
-  _yaw_min_anisotropy:=1.15 \
-  _yaw_use_obj_points:=true \
-  _debug_enable:=true
-
+2.  rosrun lab_myproject perception_6d_node.py   _publish_on_request:=true   _req_collect_N:=5   _req_min_frames:=2   _req_max_wait:=0.6   _request_timeout:=6.0   _estimate_yaw:=true   _yaw_mode:=long   _yaw_tool_offset:=0.0   _debug_enable:=true
 
 to see the prediction on RVIZ u will need to press:
 Add → Image
