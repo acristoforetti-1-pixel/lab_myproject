@@ -1,3 +1,23 @@
+/**
+* @file task_planning_node.cpp
+* @brief Task-level pick-and-place planning with inverse kinematics.
+*
+* This ROS node implements a complete pick-and-place pipeline for a UR5
+* robotic arm. It receives object poses from the perception system,
+* computes feasible grasp configurations using inverse kinematics,
+* and generates a sequence of joint-space targets to execute grasp,
+* transport, and placement motions.
+*
+* The node performs decision making at task level, including:
+* - Grasp orientation selection
+* - Singularity and joint-jump avoidance
+* - Class-dependent placement strategy
+* - Motion synchronization via acknowledgements
+*
+* Inverse kinematics is solved using the KDL library, while trajectory
+* execution is delegated to a dedicated motion execution node.
+*/
+
 #include <ros/ros.h>
 #include <ros/package.h>
 #include <yaml-cpp/yaml.h>
@@ -30,8 +50,25 @@
 #include <memory>
 #include <array>
 
+/**
+* @class PickPlaceIK
+* @brief Task planner for vision-based pick-and-place.
+*
+* This class coordinates perception, inverse kinematics, and motion
+* execution to perform autonomous pick-and-place operations.
+* It generates a sequence of joint-space goals based on object pose,
+* orientation, and semantic class, and synchronizes execution using
+* acknowledgement messages.
+*/
 class PickPlaceIK {
 public:
+  /**
+  * @brief Initialize the pick-and-place task planner.
+  *
+  * Loads configuration parameters, initializes ROS interfaces,
+  * sets up the KDL kinematic chain, and prepares internal state
+  * for task execution.
+  */
   PickPlaceIK()
   : have_js_(false), have_obj_(false), ack_(false)
   {
@@ -125,6 +162,14 @@ public:
     ROS_INFO("  hand_open=%.3f hand_close=%.3f", hand_open_, hand_close_);
   }
 
+  /**
+  * @brief Main task execution loop.
+  *
+  * Continuously monitors perception input and triggers a complete
+  * pick-and-place sequence when a new object is detected.
+  * The loop also handles object request signaling and duplicate
+  * execution prevention.
+  */
   void spin() {
     ros::Rate r(50);
     while (ros::ok()) {
@@ -266,6 +311,11 @@ private:
     current_uid_ = msg.data;
   }
 
+  /**
+  * @brief Joint state callback.
+  *
+  * Updates the current joint configuration used as IK seed.
+  */
   void jsCb(const sensor_msgs::JointState& msg) {
     if (msg.name.size() != msg.position.size()) return;
     std::lock_guard<std::mutex> lk(mtx_);
@@ -299,6 +349,9 @@ private:
     ack_ = msg.data;
   }
 
+  /**
+  * @brief Receive object pose from perception system.
+  */
   void objPoseCb(const geometry_msgs::PoseStamped& msg) {
     if (msg.header.frame_id != base_link_) return;
     std::lock_guard<std::mutex> lk(mtx_);
@@ -460,6 +513,18 @@ private:
     return true;
   }
 
+  /**
+  * @brief Solve inverse kinematics for a desired end-effector pose.
+  *
+  * Uses KDL numerical solvers to compute a joint configuration
+  * consistent with the target pose, preserving continuity with
+  * the provided seed configuration.
+  *
+  * @param target_pose Desired end-effector pose.
+  * @param seed8_raw Seed joint configuration.
+  * @param q_out6_raw Resulting arm joint configuration.
+  * @return True if a valid solution is found.
+  */
   bool solveIK(const geometry_msgs::Pose& target_pose,
                const std::vector<double>& seed8_raw,
                std::vector<double>& q_out6_raw) {
@@ -493,6 +558,12 @@ private:
     return true;
   }
 
+  /**
+  * @brief Select the best grasp yaw among candidate orientations.
+  *
+  * Evaluates multiple yaw hypotheses and selects the one minimizing
+  * joint displacement while avoiding wrist singularities.
+  */
   bool solveBestYaw(double px, double py, double pz,
                     double yaw0,
                     const std::vector<double>& seed8_raw,
@@ -521,6 +592,14 @@ private:
   }
 
   // -------------------- motion helpers (CLASS METHODS!) --------------------
+  /**
+  * @brief Move the robot to a Cartesian target selecting the best yaw.
+  *
+  * Generates IK solutions for multiple yaw candidates, evaluates their
+  * feasibility, and commands the motion with the lowest cost.
+  *
+  * @return True if a valid motion is executed.
+  */
   bool tryMoveBestYaw(double px, double py, double pz, double yaw_hint,
                       const char* tag, double max_jump,
                       std::vector<double>& q_seed8_raw)
@@ -573,6 +652,12 @@ private:
     return true;
   }
 
+  /**
+  * @brief Move the robot to a Cartesian target with fixed yaw.
+  *
+  * Executes a motion only if the requested orientation is feasible
+  * and safe, without fallback yaw alternatives.
+  */
   bool tryMoveFixedYaw(double px, double py, double pz, double yaw,
                        const char* tag, double max_jump,
                        std::vector<double>& q_seed8_raw)
@@ -613,6 +698,20 @@ private:
   }
 
   // -------------------- MAIN pick&place --------------------
+  /**
+  * @brief Execute a full pick-and-place sequence for a detected object.
+  *
+  * This method computes grasp and placement poses, selects suitable
+  * end-effector orientations, solves inverse kinematics, and issues
+  * a sequence of joint-space motion commands to grasp, lift, transport,
+  * and place the object.
+  *
+  * Safety checks include joint jump limits, wrist singularity avoidance,
+  * minimum reach constraints, and table clearance.
+  *
+  * @param obj Object pose expressed in the robot base frame.
+  * @param q_seed8_raw Initial joint configuration used as IK seed.
+  */
   void doPickPlace(const geometry_msgs::PoseStamped& obj, std::vector<double> q_seed8_raw)
   {
     auto doOpen = [&](const char* tag)->void {
