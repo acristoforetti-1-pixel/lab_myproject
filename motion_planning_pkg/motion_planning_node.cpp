@@ -1,3 +1,28 @@
+/**
+ * @file motion_planning_node.cpp
+ * @brief Joint-space motion execution for UR5 pick-and-place tasks.
+ *
+ * This ROS node executes joint-space motion commands for a UR5 robotic arm
+ * equipped with a simple parallel gripper. The node receives desired joint
+ * configurations, interpolates them using smooth time-parameterized
+ * trajectories, and publishes commands to a joint group position controller.
+ *
+ * The arm and the gripper are interpolated independently using cubic
+ * time-scaling, allowing different execution durations. A Boolean
+ * acknowledgement signal is published upon motion completion to synchronize
+ * with higher-level task planning modules.
+ *
+ * Main features:
+ * - Joint-space trajectory generation using cubic interpolation
+ * - Independent timing for arm and gripper motions
+ * - Automatic joint name mapping from /joint_states
+ * - Command holding to avoid controller timeout
+ * - Execution acknowledgement for task-level coordination
+ *
+ * This node does not perform collision checking or inverse kinematics, which
+ * are handled at higher levels of the system.
+ */
+
 #include <ros/ros.h>
 #include <sensor_msgs/JointState.h>
 #include <std_msgs/Float64MultiArray.h>
@@ -9,8 +34,26 @@
 #include <algorithm>
 #include <cmath>
 
+/**
+ * @class MotionPlanningNode
+ * @brief ROS node for joint-space motion execution.
+ *
+ * This class implements a lightweight motion execution layer that converts
+ * joint-space targets into smooth reference trajectories for the robot
+ * controller. Motions are executed using cubic time scaling to ensure
+ * continuous velocity profiles.
+ *
+ * The node is designed to be triggered by a higher-level task planner and
+ * provides a latched acknowledgement signal upon completion of each motion.
+ */
 class MotionPlanningNode {
 public:
+  /**
+  * @brief Construct and initialize the motion planning node.
+  *
+  * Loads ROS parameters, initializes publishers and subscribers,
+  * and prepares internal buffers for trajectory execution.
+  */
   MotionPlanningNode()
   : have_map_(false),
     have_js_(false),
@@ -60,6 +103,13 @@ public:
     ROS_INFO("  hand clamp: [%.3f, %.3f]", hand_min_, hand_max_);
   }
 
+  /**
+  * @brief Main execution loop.
+  *
+  * Runs the control loop at a fixed rate. While a motion is active,
+  * trajectory interpolation is performed. Otherwise, the last valid
+  * command may be re-published to keep the controller alive.
+  */
   void spin() {
     ros::Rate rate(200);
     ros::Time last_hold_pub = ros::Time(0);
@@ -99,6 +149,14 @@ private:
     return wrapPi(a - b);
   }
 
+  /**
+  * @brief Joint state callback.
+  *
+  * Maps joint names to indices on first reception and continuously
+  * updates the current arm and gripper joint positions.
+  *
+  * @param msg JointState message from the robot.
+  */
   void jsCb(const sensor_msgs::JointState& msg) {
     if (msg.name.size() != msg.position.size()) return;
 
@@ -165,6 +223,15 @@ private:
     }
   }
 
+  /**
+  * @brief Target joint configuration callback.
+  *
+  * Receives a desired joint configuration for the arm and optionally
+  * for the gripper. The target is stored and a new trajectory execution
+  * is started.
+  *
+  * @param msg Target joint configuration [q1..q6,(h1,h2)].
+  */
   void targetCb(const std_msgs::Float64MultiArray& msg) {
     if (msg.data.size() < 6) {
       ROS_WARN("Target size < 6 ignored.");
@@ -202,6 +269,14 @@ private:
     executing_ = true;
   }
 
+  /**
+  * @brief Execute one interpolation step of the active trajectory.
+  *
+  * Computes smooth cubic time-scaling for both arm and gripper joints
+  * and publishes the corresponding command. When the trajectory
+  * duration elapses, execution is stopped and an acknowledgement
+  * is sent.
+  */
   void step() {
     std::vector<double> q0, qf, hand0, handf;
     ros::Time t0;
@@ -267,6 +342,11 @@ private:
     pub_cmd_.publish(cmd);
   }
 
+  /**
+  * @brief Publish motion completion acknowledgement.
+  *
+  * @param ok True if the motion has completed successfully.
+  */
   void publishAck(bool ok) {
     std_msgs::Bool a;
     a.data = ok;
