@@ -1,5 +1,29 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+@file spawn_random_blocks.py
+@brief Random spawning of rigid blocks in Gazebo for pick-and-place experiments.
+
+This script populates the Gazebo simulation environment with rigid,
+non-deformable blocks randomly placed on a table surface. Spawned objects
+are guaranteed to lie within the robot reachable workspace, avoid predefined
+no-go regions, and not overlap with each other.
+
+Object poses are sampled in the robot base frame and converted to the Gazebo
+world frame using the robot model state. The script is intended for automated
+testing and benchmarking of perception, planning, and manipulation pipelines
+in a pick-and-place scenario.
+
+Main features:
+- Random sampling in the base_link frame
+- Reachability and exclusion zone constraints
+- Non-overlapping object placement
+- On-the-fly adjustment of Gazebo physics parameters
+- Support for multiple block models loaded from disk
+
+This script does not publish perception outputs and is intended for offline
+environment setup only.
+"""
 
 import rospy
 import os
@@ -46,6 +70,15 @@ MODELS_DIR = os.path.expanduser("~/ros_ws/src/lab_myproject/models")
 # UTILS
 # -------------------------------------------------------
 def get_available_models():
+    """
+    @brief Retrieve all available block models.
+
+    Scans the models directory and returns the names of all Gazebo models
+    that provide a valid SDF description. Each model corresponds to a rigid
+    block that can be spawned in the simulation.
+
+    @return List of available model names.
+    """
     if not os.path.isdir(MODELS_DIR):
         return []
     out = []
@@ -74,7 +107,15 @@ def in_no_go_zone(x, y):
 
 
 def sample_xy_base():
-    """Campiona in base_link rispettando range tavolo + rxy + no-go."""
+    """
+    @brief Sample a valid (x, y) position in the robot base frame.
+
+    The sampling respects table boundaries, radial reachability constraints,
+    and predefined no-go regions. The function retries multiple times before
+    returning a fallback position.
+
+    @return A valid (x, y) position expressed in the base_link frame.
+    """
     for _ in range(2000):
         x = random.uniform(X_RANGE[0] + MARGIN, X_RANGE[1] - MARGIN)
         y = random.uniform(Y_RANGE[0] + MARGIN, Y_RANGE[1] - MARGIN)
@@ -93,8 +134,18 @@ def sample_xy_base():
 
 def base_to_world(get_state_srv, x_b, y_b, z_b, yaw_b):
     """
-    Converte (base_link) -> world usando la posa del robot in Gazebo.
-    z_b è in base_link, quindi world z = z_b + Z_OFFSET.
+    @brief Convert a pose from base_link frame to Gazebo world frame.
+
+    The conversion uses the current robot pose obtained from Gazebo to map
+    coordinates expressed in the robot base frame into the global world frame.
+    This ensures consistency between perception, planning, and simulation.
+
+    @param get_state_srv Gazebo service proxy for retrieving robot state.
+    @param x_b X position in base_link frame.
+    @param y_b Y position in base_link frame.
+    @param z_b Z position in base_link frame.
+    @param yaw_b Yaw angle in base_link frame.
+    @return Pose expressed in the Gazebo world frame.
     """
     st = get_state_srv(model_name=ROBOT_MODEL_NAME, relative_entity_name="world")
 
@@ -143,6 +194,17 @@ def world_to_base(get_state_srv, x_w, y_w, z_w, yaw_w):
 
 
 def random_pose_non_overlapping(existing_xy_base, get_state_srv):
+    """
+    @brief Generate a random non-overlapping object pose.
+
+    Samples a valid object pose in the base_link frame while ensuring a
+    minimum distance from previously spawned objects. The pose is then
+    converted to the Gazebo world frame for spawning.
+
+    @param existing_xy_base List of already occupied (x, y) positions.
+    @param get_state_srv Gazebo service proxy.
+    @return Tuple containing the world-frame pose and base-frame (x, y).
+    """
     z_b_spawn = SPAWN_Z - Z_OFFSET
 
     for _ in range(500):
@@ -170,6 +232,15 @@ def random_pose_non_overlapping(existing_xy_base, get_state_srv):
 # FIX FISICA GAZEBO (senza modificare i modelli)
 # -------------------------------------------------------
 def fix_gazebo_physics():
+    """
+    @brief Override Gazebo physics parameters for stable object spawning.
+
+    This function modifies the default Gazebo ODE physics settings to
+    improve contact stability and reduce numerical artifacts when spawning
+    small rigid objects on planar surfaces.
+
+    The modification avoids the need to edit individual model SDF files.
+    """
     rospy.wait_for_service("/gazebo/get_physics_properties")
     rospy.wait_for_service("/gazebo/set_physics_properties")
 
@@ -206,6 +277,12 @@ def fix_gazebo_physics():
 # MAIN
 # -------------------------------------------------------
 def main():
+    """
+    @brief Main entry point for random block spawning.
+
+    Initializes ROS, configures Gazebo physics, selects random block models,
+    and spawns them at valid poses in the simulation environment.
+    """
     rospy.init_node("spawn_random_blocks")
 
     rospy.wait_for_service("/gazebo/spawn_sdf_model")
