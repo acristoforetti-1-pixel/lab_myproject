@@ -71,32 +71,9 @@ class Perception6DNode:
     """
     @class Perception6DNode
     @brief ROS node for 6D object pose estimation.
-
-    This class implements a perception pipeline for autonomous pick-and-place
-    manipulation. It subscribes to synchronized RGB and depth images, detects
-    objects using YOLOv8, and estimates their 6D pose assuming rigid objects
-    resting on a planar surface.
-
-    The node supports both continuous publishing and request-based operation.
-    In request mode, pose estimates are temporally aggregated to improve
-    robustness and reduce noise before publication.
-
-    Published outputs:
-    - /vision/object_pose (PoseStamped)
-    - /vision/object_rpy (Float64MultiArray)
-    - /vision/object_name (String)
-    - /vision/object_uid (String)
     """
 
     def __init__(self):
-        """
-        @brief Initialize the perception node.
-
-        This method initializes ROS parameters, loads the YOLOv8 model,
-        sets up publishers and subscribers, and configures all perception
-        parameters related to depth processing, table estimation, and
-        yaw computation.
-        """
         rospy.init_node("perception_6d_node", anonymous=False)
 
         # riduce rogne threading cv2
@@ -177,11 +154,13 @@ class Perception6DNode:
         self.estimate_yaw = bool(rospy.get_param("~estimate_yaw", True))
 
         # output:
-        #  - "long"  -> yaw asse lungo (DEFAULT)
+        #  - "long"  -> yaw asse lungo
         #  - "short" -> yaw asse corto (= long + 90°)
-        self.yaw_mode = str(rospy.get_param("~yaw_mode", "long")).strip().lower()
+        #
+        # MOD: default "short" per pinza a 2 dita (presa sulla zona stretta)
+        self.yaw_mode = str(rospy.get_param("~yaw_mode", "short")).strip().lower()
         if self.yaw_mode not in ("long", "short"):
-            self.yaw_mode = "long"
+            self.yaw_mode = "short"
 
         # offset tool fisso (radianti). Se vuoi 90°: 1.5708
         self.yaw_tool_offset = float(rospy.get_param("~yaw_tool_offset", 0.0))
@@ -204,10 +183,17 @@ class Perception6DNode:
         # usa punti obj completi per yaw (consigliato)
         self.yaw_use_obj_points = bool(rospy.get_param("~yaw_use_obj_points", True))
 
-        # smoothing leggero dello yaw (anti jitter) – ATTENZIONE: con snap spesso puoi spegnerlo
+        # smoothing leggero dello yaw
         self.yaw_smooth = bool(rospy.get_param("~yaw_smooth", False))
         self.yaw_smooth_alpha = float(rospy.get_param("~yaw_smooth_alpha", 0.35))
         self._yaw_last = None  # yaw filtrato (rad)
+
+        # ---- NEW: XY più preciso con centro OBB (minAreaRect) ----
+        self.xy_use_rect_center = bool(rospy.get_param("~xy_use_rect_center", True))
+        self.xy_rect_center_min_pts = int(rospy.get_param("~xy_rect_center_min_pts", 160))
+        # 0.0 = solo densest+median, 1.0 = solo centro rect
+        self.xy_center_blend = float(rospy.get_param("~xy_center_blend", 0.65))
+        self.xy_center_blend = float(np.clip(self.xy_center_blend, 0.0, 1.0))
 
         # ---- debug ----
         self.debug_enable = bool(rospy.get_param("~debug_enable", True))
@@ -265,6 +251,9 @@ class Perception6DNode:
                       str(self.yaw_use_rect), self.yaw_rect_min_aspect,
                       str(self.yaw_use_pca), self.yaw_min_anisotropy,
                       str(self.yaw_use_obj_points), str(self.yaw_smooth))
+
+        rospy.logwarn("[perception6d] xy_use_rect_center=%s xy_center_blend=%.2f xy_rect_center_min_pts=%d",
+                      str(self.xy_use_rect_center), self.xy_center_blend, self.xy_rect_center_min_pts)
 
     def _on_shutdown(self):
         try:
@@ -431,21 +420,6 @@ class Perception6DNode:
         return us, vs, zs
 
     def _estimate_table_z_base(self, depth, T_base_cam, fx, fy, cx, cy):
-        """
-        @brief Estimate the table height in the robot base frame.
-
-        The table height is estimated by sampling depth points in a predefined
-        image region, projecting them into the robot base frame, and computing
-        a dominant height value using histogram analysis.
-
-        @param depth Depth image in meters.
-        @param T_base_cam Homogeneous transform from camera frame to base frame.
-        @param fx Camera focal length in x.
-        @param fy Camera focal length in y.
-        @param cx Camera principal point x.
-        @param cy Camera principal point y.
-        @return Estimated table height and ROI used for estimation.
-        """
         h, w = depth.shape[:2]
         u0 = int(np.clip(self.table_roi_u0 * w, 0, w - 1))
         u1 = int(np.clip(self.table_roi_u1 * w, 1, w))
@@ -495,31 +469,25 @@ class Perception6DNode:
     @staticmethod
     def _yaw_from_min_area_rect_long(xy: np.ndarray, aspect_min: float, min_pts: int):
         """
-        @brief Estimate object yaw using minimum-area bounding rectangle.
-
-        The yaw angle is computed from the long axis of the minimum-area
-        oriented bounding box fitted to the object footprint.
-
-        @param xy 2D points of the object footprint.
-        @param aspect_min Minimum aspect ratio required for reliable estimation.
-        @param min_pts Minimum number of points required.
-        @return Estimated yaw angle and aspect ratio, or None if estimation fails.
+        Ritorna:
+          yaw_long (asse lungo), aspect, (cx, cy) centro del rettangolo
         """
         if xy.shape[0] < min_pts:
-            return None, None
+            return None, None, None
         pts = xy.astype(np.float32).reshape(-1, 1, 2)
         try:
-            rect = cv2.minAreaRect(pts)
-            box = cv2.boxPoints(rect)  # 4x2
+            rect = cv2.minAreaRect(pts)   # ((cx,cy),(w,h),angle)
+            (rcx, rcy) = rect[0]
+            box = cv2.boxPoints(rect)     # 4x2
         except Exception:
-            return None, None
+            return None, None, None
 
         v01 = box[1] - box[0]
         v12 = box[2] - box[1]
         l01 = float(np.linalg.norm(v01))
         l12 = float(np.linalg.norm(v12))
         if l01 < 1e-6 or l12 < 1e-6:
-            return None, None
+            return None, None, None
 
         if l01 >= l12:
             v_long = v01
@@ -532,10 +500,10 @@ class Perception6DNode:
 
         aspect = float(long_len / max(short_len, 1e-6))
         if aspect < aspect_min:
-            return None, aspect
+            return None, aspect, (float(rcx), float(rcy))
 
         yaw_long = wrap_pi(math.atan2(float(v_long[1]), float(v_long[0])))
-        return yaw_long, aspect
+        return yaw_long, aspect, (float(rcx), float(rcy))
 
     @staticmethod
     def _yaw_from_pca_major(xy: np.ndarray, anis_min: float, min_pts: int):
@@ -662,19 +630,6 @@ class Perception6DNode:
 
     # ---------------- main callback ----------------
     def _synced_cb(self, color_msg: Image, depth_msg: Image):
-        """
-        @brief Main synchronized callback for RGB-D processing.
-
-        This callback is triggered on synchronized RGB and depth images.
-        It performs object detection, depth-based filtering, table height
-        estimation, 3D position computation, and yaw estimation.
-
-        Depending on the operating mode, the estimated object pose is either
-        published immediately or accumulated for request-based median filtering.
-
-        @param color_msg RGB image message.
-        @param depth_msg Depth image message aligned with the RGB image.
-        """
         if self.K0 is None:
             rospy.logwarn_throttle(5.0, "[perception6d] waiting for camera_info...")
             return
@@ -868,12 +823,12 @@ class Perception6DNode:
                     yu = yb[use_xy]
                     zu = zb[use_xy]
 
-                    # 1) densest-bin center
+                    # 1) tuo centro robusto (top surface)
                     cx_d, cy_d = self._densest_xy_center(xu, yu, bin_size=self.dense_bin_size)
-                    # 2) refine within radius (median)
-                    x_med, y_med, z_med, _ = self._refine_center_in_radius(xu, yu, zu, cx_d, cy_d, r=self.xy_inlier_r)
+                    x_rob, y_rob, z_med, _ = self._refine_center_in_radius(xu, yu, zu, cx_d, cy_d, r=self.xy_inlier_r)
+                    x_med, y_med = x_rob, y_rob  # default
 
-                    # YAW robusto: usa footprint completa (obj)
+                    # YAW robusto: usa footprint completa (obj) + prende anche centro OBB
                     if self.estimate_yaw:
                         if self.yaw_use_obj_points:
                             xy_yaw = np.stack([xb[obj], yb[obj]], axis=1)
@@ -881,14 +836,20 @@ class Perception6DNode:
                             xy_yaw = np.stack([xu, yu], axis=1)
 
                         yaw_long = None
+                        rect_center = None
 
                         if self.yaw_use_rect:
-                            yr, asp = self._yaw_from_min_area_rect_long(
+                            yr, asp, cxy = self._yaw_from_min_area_rect_long(
                                 xy_yaw, self.yaw_rect_min_aspect, self.yaw_rect_min_pts
                             )
+                            if cxy is not None:
+                                rect_center = cxy
+
                             if yr is not None:
                                 yaw_long = float(yr)
                                 yaw_dbg = f"rect asp={asp:.2f}"
+                            else:
+                                yaw_dbg = f"rect asp={asp:.2f}" if asp is not None else "rect fail"
 
                         if yaw_long is None and self.yaw_use_pca:
                             yp, anis = self._yaw_from_pca_major(
@@ -902,6 +863,12 @@ class Perception6DNode:
 
                         if yaw_long is not None:
                             yaw_out = self._apply_yaw_mode_and_offset(yaw_long)
+
+                        # ✅ XY più preciso: fondi centro rect con centro robusto
+                        if self.xy_use_rect_center and rect_center is not None and xy_yaw.shape[0] >= self.xy_rect_center_min_pts:
+                            a = float(self.xy_center_blend)
+                            x_med = (1.0 - a) * float(x_rob) + a * float(rect_center[0])
+                            y_med = (1.0 - a) * float(y_rob) + a * float(rect_center[1])
 
             # filtro Z
             if self.use_table_z and (z_table_est is not None) and np.isfinite(z_table_est):
@@ -1036,7 +1003,7 @@ class Perception6DNode:
                 else:
                     yaw_med = yaw0
 
-                # snap finale (stesso schema del frame singolo)
+                # snap finale
                 if self.yaw_snap_enable:
                     yaw_med = self._snap_angle(yaw_med, self.yaw_snap_step)
 

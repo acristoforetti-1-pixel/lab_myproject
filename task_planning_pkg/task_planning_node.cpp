@@ -164,11 +164,6 @@ public:
 
   /**
   * @brief Main task execution loop.
-  *
-  * Continuously monitors perception input and triggers a complete
-  * pick-and-place sequence when a new object is detected.
-  * The loop also handles object request signaling and duplicate
-  * execution prevention.
   */
   void spin() {
     ros::Rate r(50);
@@ -311,11 +306,6 @@ private:
     current_uid_ = msg.data;
   }
 
-  /**
-  * @brief Joint state callback.
-  *
-  * Updates the current joint configuration used as IK seed.
-  */
   void jsCb(const sensor_msgs::JointState& msg) {
     if (msg.name.size() != msg.position.size()) return;
     std::lock_guard<std::mutex> lk(mtx_);
@@ -349,9 +339,6 @@ private:
     ack_ = msg.data;
   }
 
-  /**
-  * @brief Receive object pose from perception system.
-  */
   void objPoseCb(const geometry_msgs::PoseStamped& msg) {
     if (msg.header.frame_id != base_link_) return;
     std::lock_guard<std::mutex> lk(mtx_);
@@ -513,18 +500,6 @@ private:
     return true;
   }
 
-  /**
-  * @brief Solve inverse kinematics for a desired end-effector pose.
-  *
-  * Uses KDL numerical solvers to compute a joint configuration
-  * consistent with the target pose, preserving continuity with
-  * the provided seed configuration.
-  *
-  * @param target_pose Desired end-effector pose.
-  * @param seed8_raw Seed joint configuration.
-  * @param q_out6_raw Resulting arm joint configuration.
-  * @return True if a valid solution is found.
-  */
   bool solveIK(const geometry_msgs::Pose& target_pose,
                const std::vector<double>& seed8_raw,
                std::vector<double>& q_out6_raw) {
@@ -558,12 +533,6 @@ private:
     return true;
   }
 
-  /**
-  * @brief Select the best grasp yaw among candidate orientations.
-  *
-  * Evaluates multiple yaw hypotheses and selects the one minimizing
-  * joint displacement while avoiding wrist singularities.
-  */
   bool solveBestYaw(double px, double py, double pz,
                     double yaw0,
                     const std::vector<double>& seed8_raw,
@@ -591,15 +560,7 @@ private:
     return any;
   }
 
-  // -------------------- motion helpers (CLASS METHODS!) --------------------
-  /**
-  * @brief Move the robot to a Cartesian target selecting the best yaw.
-  *
-  * Generates IK solutions for multiple yaw candidates, evaluates their
-  * feasibility, and commands the motion with the lowest cost.
-  *
-  * @return True if a valid motion is executed.
-  */
+  // -------------------- motion helpers --------------------
   bool tryMoveBestYaw(double px, double py, double pz, double yaw_hint,
                       const char* tag, double max_jump,
                       std::vector<double>& q_seed8_raw)
@@ -652,12 +613,6 @@ private:
     return true;
   }
 
-  /**
-  * @brief Move the robot to a Cartesian target with fixed yaw.
-  *
-  * Executes a motion only if the requested orientation is feasible
-  * and safe, without fallback yaw alternatives.
-  */
   bool tryMoveFixedYaw(double px, double py, double pz, double yaw,
                        const char* tag, double max_jump,
                        std::vector<double>& q_seed8_raw)
@@ -698,20 +653,6 @@ private:
   }
 
   // -------------------- MAIN pick&place --------------------
-  /**
-  * @brief Execute a full pick-and-place sequence for a detected object.
-  *
-  * This method computes grasp and placement poses, selects suitable
-  * end-effector orientations, solves inverse kinematics, and issues
-  * a sequence of joint-space motion commands to grasp, lift, transport,
-  * and place the object.
-  *
-  * Safety checks include joint jump limits, wrist singularity avoidance,
-  * minimum reach constraints, and table clearance.
-  *
-  * @param obj Object pose expressed in the robot base frame.
-  * @param q_seed8_raw Initial joint configuration used as IK seed.
-  */
   void doPickPlace(const geometry_msgs::PoseStamped& obj, std::vector<double> q_seed8_raw)
   {
     auto doOpen = [&](const char* tag)->void {
@@ -760,7 +701,7 @@ private:
       tf2::fromMsg(obj.pose.orientation, qtmp);
       tf2::Matrix3x3(qtmp).getRPY(rr, pp, yaw_obj);
     }
-    yaw_obj = snap90(yaw_obj);
+    yaw_obj = snap90(wrapPi(yaw_obj + yaw_gripper_offset_));
 
     const double rxy = std::sqrt(x_in*x_in + y_in*y_in);
     if (rxy < min_xy_radius_) {
@@ -827,16 +768,18 @@ private:
     ROS_WARN("OBJ x=%.3f y=%.3f z=%.3f yaw_obj=%.3f yaw_grasp=%.3f yaw_place=%.3f class=%d name=%s -> DROP (%.3f,%.3f)",
              x_in, y_in, z_in, yaw_obj, yaw_grasp, yaw_place, class_id, obj_name.c_str(), drop_x_eff, drop_y_eff);
 
-    // open
+    // open (NO MOVEMENT: solo comando gripper)
     doOpen("pre");
 
-    // staging vicino (evita salita/flips)
-    {
-      const double x_stage = 0.22;
-      const double y_stage = clamp(y_in, 0.12, 0.28);
-      const double z_stage = z_safe + 0.24;
-      (void)tryMoveBestYaw(x_stage, y_stage, z_stage, yaw_grasp, "start_stage", 3.2, q_seed8_raw);
-    }
+    // ------------------------------------------------------------
+    // MOD: tolto lo "start_stage" iniziale che faceva il lift inutile
+    // e ti "accartocciava" il robot all'avvio del pick&place.
+    //
+    // Prima c'era:
+    //   tryMoveBestYaw(x_stage, y_stage, z_safe + 0.24, ...)
+    //
+    // Ora si va direttamente agli approach pregrasp/pregrasp_high.
+    // ------------------------------------------------------------
 
     // approach
     double x = x_in, y = y_in;
@@ -903,7 +846,7 @@ private:
 
   // ---------- Members ----------
   std::mutex mtx_;
-
+double yaw_gripper_offset_ = M_PI_2;
   ros::Publisher pub_req_;
   ros::Time last_req_;
 
