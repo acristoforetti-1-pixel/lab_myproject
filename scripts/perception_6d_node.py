@@ -1,5 +1,27 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+@file perception_6d_node.py
+@brief 6D pose estimation of rigid blocks using RGB-D data and YOLOv8.
+
+This ROS node performs perception for a pick-and-place task by combining
+deep-learning-based object detection on RGB images with geometric processing
+of depth data. The node estimates the 3D position and yaw orientation of
+rigid, non-deformable blocks placed on a planar surface.
+
+Detected object poses are expressed in the robot base frame and published
+to the /vision namespace for consumption by task planning and motion planning
+modules. A request-based mode is supported to provide temporally filtered
+pose estimates on demand.
+
+Main features:
+- YOLOv8 object detection on RGB images
+- Robust depth sampling inside bounding boxes
+- Table plane height estimation
+- 3D position estimation using robust statistics
+- Yaw estimation using geometric analysis (minAreaRect / PCA)
+- Optional request-based pose publication
+"""
 
 import os
 # limita thread (aiuta stabilità con torch/opencv)
@@ -47,27 +69,34 @@ def wrap_pi(a: float) -> float:
 
 class Perception6DNode:
     """
-    Perception robusto e veloce:
-      - YOLO su color (overlay SEMPRE su /perception/debug/image_raw)
-      - depth sampling nel bbox (con shrink)
-      - stima z tavolo in base_link (istogramma)
-      - selezione punti oggetto: sopra tavolo + top-surface (percentile dz) per XY
-      - XY: densest-bin (2D) + refine median in r
-      - yaw robusto:
-          * usa punti OBJ completi (footprint) per yaw
-          * minAreaRect -> yaw_long (asse lungo)
-          * fallback PCA major axis -> yaw_long
-          * output yaw_mode: "long" (default) o "short" (+90°)
-          * yaw_tool_offset: offset fisso (rad) per allineare col tool reale
-          * yaw SNAP opzionale (es: 90°) per evitare jitter/ambiguità
-          * outlier reject in request-mode (yaw sporchi non rovinano la mediana)
-      - request-mode:
-          * NON resetta se arrivano request ripetute mentre pending
-          * pubblica entro max_wait se ha min_frames (no attese infinite)
-      - /vision publishers latch (task_planning non perde messaggi)
+    @class Perception6DNode
+    @brief ROS node for 6D object pose estimation.
+
+    This class implements a perception pipeline for autonomous pick-and-place
+    manipulation. It subscribes to synchronized RGB and depth images, detects
+    objects using YOLOv8, and estimates their 6D pose assuming rigid objects
+    resting on a planar surface.
+
+    The node supports both continuous publishing and request-based operation.
+    In request mode, pose estimates are temporally aggregated to improve
+    robustness and reduce noise before publication.
+
+    Published outputs:
+    - /vision/object_pose (PoseStamped)
+    - /vision/object_rpy (Float64MultiArray)
+    - /vision/object_name (String)
+    - /vision/object_uid (String)
     """
 
     def __init__(self):
+        """
+        @brief Initialize the perception node.
+
+        This method initializes ROS parameters, loads the YOLOv8 model,
+        sets up publishers and subscribers, and configures all perception
+        parameters related to depth processing, table estimation, and
+        yaw computation.
+        """
         rospy.init_node("perception_6d_node", anonymous=False)
 
         # riduce rogne threading cv2
@@ -402,6 +431,21 @@ class Perception6DNode:
         return us, vs, zs
 
     def _estimate_table_z_base(self, depth, T_base_cam, fx, fy, cx, cy):
+        """
+        @brief Estimate the table height in the robot base frame.
+
+        The table height is estimated by sampling depth points in a predefined
+        image region, projecting them into the robot base frame, and computing
+        a dominant height value using histogram analysis.
+
+        @param depth Depth image in meters.
+        @param T_base_cam Homogeneous transform from camera frame to base frame.
+        @param fx Camera focal length in x.
+        @param fy Camera focal length in y.
+        @param cx Camera principal point x.
+        @param cy Camera principal point y.
+        @return Estimated table height and ROI used for estimation.
+        """
         h, w = depth.shape[:2]
         u0 = int(np.clip(self.table_roi_u0 * w, 0, w - 1))
         u1 = int(np.clip(self.table_roi_u1 * w, 1, w))
@@ -451,8 +495,15 @@ class Perception6DNode:
     @staticmethod
     def _yaw_from_min_area_rect_long(xy: np.ndarray, aspect_min: float, min_pts: int):
         """
-        Ritorna yaw_long (asse lungo) usando minAreaRect.
-        aspect = long/short.
+        @brief Estimate object yaw using minimum-area bounding rectangle.
+
+        The yaw angle is computed from the long axis of the minimum-area
+        oriented bounding box fitted to the object footprint.
+
+        @param xy 2D points of the object footprint.
+        @param aspect_min Minimum aspect ratio required for reliable estimation.
+        @param min_pts Minimum number of points required.
+        @return Estimated yaw angle and aspect ratio, or None if estimation fails.
         """
         if xy.shape[0] < min_pts:
             return None, None
@@ -611,6 +662,19 @@ class Perception6DNode:
 
     # ---------------- main callback ----------------
     def _synced_cb(self, color_msg: Image, depth_msg: Image):
+        """
+        @brief Main synchronized callback for RGB-D processing.
+
+        This callback is triggered on synchronized RGB and depth images.
+        It performs object detection, depth-based filtering, table height
+        estimation, 3D position computation, and yaw estimation.
+
+        Depending on the operating mode, the estimated object pose is either
+        published immediately or accumulated for request-based median filtering.
+
+        @param color_msg RGB image message.
+        @param depth_msg Depth image message aligned with the RGB image.
+        """
         if self.K0 is None:
             rospy.logwarn_throttle(5.0, "[perception6d] waiting for camera_info...")
             return
