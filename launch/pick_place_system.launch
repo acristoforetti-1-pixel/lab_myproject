@@ -67,7 +67,7 @@
 
   <param name="use_home_after_place" value="false"/>
   <param name="ack_timeout" value="10.0"/>
-<param name="yaw_gripper_offset" value="1.57079632679"/>
+<param name="_yaw_gripper_offset" value="1.57079632679"/>
   <param name="fixed_roll"  value="3.1415926535"/>
   <param name="fixed_pitch" value="0.0"/>
 </node>

@@ -50,25 +50,8 @@
 #include <memory>
 #include <array>
 
-/**
-* @class PickPlaceIK
-* @brief Task planner for vision-based pick-and-place.
-*
-* This class coordinates perception, inverse kinematics, and motion
-* execution to perform autonomous pick-and-place operations.
-* It generates a sequence of joint-space goals based on object pose,
-* orientation, and semantic class, and synchronizes execution using
-* acknowledgement messages.
-*/
 class PickPlaceIK {
 public:
-  /**
-  * @brief Initialize the pick-and-place task planner.
-  *
-  * Loads configuration parameters, initializes ROS interfaces,
-  * sets up the KDL kinematic chain, and prepares internal state
-  * for task execution.
-  */
   PickPlaceIK()
   : have_js_(false), have_obj_(false), ack_(false)
   {
@@ -116,6 +99,9 @@ public:
     pnh.param("fixed_roll",  fixed_roll_,  M_PI);
     pnh.param("fixed_pitch", fixed_pitch_, 0.0);
 
+    // >>> FIX: offset yaw per allineare la pinza (default +90°)
+    pnh.param("yaw_gripper_offset", yaw_gripper_offset_, M_PI_2);
+
     pnh.param("hand_open",  hand_open_,  0.85);
     pnh.param("hand_close", hand_close_, 0.0);
 
@@ -160,11 +146,9 @@ public:
     ROS_INFO("  table_z=%.3f z_clear=%.3f", table_z_, z_clear_);
     ROS_INFO("  z_pre=%.3f  z_grasp=%.3f  z_lift=%.3f", z_pre_off_, z_grasp_off_, z_lift_off_);
     ROS_INFO("  hand_open=%.3f hand_close=%.3f", hand_open_, hand_close_);
+    ROS_INFO("  yaw_gripper_offset=%.3f rad (%.1f deg)", yaw_gripper_offset_, yaw_gripper_offset_ * 180.0 / M_PI);
   }
 
-  /**
-  * @brief Main task execution loop.
-  */
   void spin() {
     ros::Rate r(50);
     while (ros::ok()) {
@@ -195,7 +179,7 @@ public:
       }
 
       if (need_request) {
-        if ((ros::Time::now() - last_req_).toSec() > 0.5) { // max 2 Hz
+        if ((ros::Time::now() - last_req_).toSec() > 0.5) {
           std_msgs::Bool req; req.data = true;
           pub_req_.publish(req);
           last_req_ = ros::Time::now();
@@ -272,7 +256,7 @@ private:
 
   static bool nearWristSingularity(const std::vector<double>& q6_raw) {
     if (q6_raw.size() < 5) return false;
-    const double w2 = wrapPi(q6_raw[4]);  // wrist_2
+    const double w2 = wrapPi(q6_raw[4]);
     return (std::abs(std::sin(w2)) < 0.18);
   }
 
@@ -434,43 +418,6 @@ private:
   }
 
   // -------------------- KDL --------------------
-  bool loadJointLimitsFromYaml(const std::string& path,
-                               std::map<std::string, std::pair<double,double>>& lim_out) {
-    try {
-      YAML::Node root = YAML::LoadFile(path);
-      auto jl = root["joint_limits"];
-      if (!jl) return false;
-
-      auto read = [&](const std::string& key, double& mn, double& mx) -> bool {
-        if (!jl[key]) return false;
-        auto n = jl[key];
-        if (n["min_position"] && n["max_position"]) {
-          mn = n["min_position"].as<double>();
-          mx = n["max_position"].as<double>();
-          return true;
-        }
-        if (n["min"] && n["max"]) {
-          mn = n["min"].as<double>();
-          mx = n["max"].as<double>();
-          return true;
-        }
-        return false;
-      };
-
-      double mn, mx;
-      if (read("shoulder_pan", mn, mx))   lim_out["shoulder_pan_joint"]   = {mn, mx};
-      if (read("shoulder_lift", mn, mx))  lim_out["shoulder_lift_joint"]  = {mn, mx};
-      if (read("elbow_joint", mn, mx))    lim_out["elbow_joint"]          = {mn, mx};
-      if (read("wrist_1", mn, mx))        lim_out["wrist_1_joint"]        = {mn, mx};
-      if (read("wrist_2", mn, mx))        lim_out["wrist_2_joint"]        = {mn, mx};
-      if (read("wrist_3", mn, mx))        lim_out["wrist_3_joint"]        = {mn, mx};
-
-      return !lim_out.empty();
-    } catch (...) {
-      return false;
-    }
-  }
-
   bool initKDL() {
     ros::NodeHandle nh;
     std::string urdf;
@@ -489,9 +436,6 @@ private:
       q_min_(j) = -2.0*M_PI;
       q_max_(j) =  2.0*M_PI;
     }
-
-    std::map<std::string, std::pair<double,double>> lim;
-    (void)loadJointLimitsFromYaml(joint_limits_yaml_, lim);
 
     fk_.reset(new KDL::ChainFkSolverPos_recursive(chain_));
     ik_vel_.reset(new KDL::ChainIkSolverVel_pinv(chain_));
@@ -584,8 +528,8 @@ private:
       if (bestJ > max_jump) continue;
       if (nearWristSingularity(q6)) continue;
 
-      const double d0 = wrapPi(q6[0] - q_seed8_raw[0]);  // shoulder pan delta
-      const double w2 = wrapPi(q6[4]);                   // wrist_2
+      const double d0 = wrapPi(q6[0] - q_seed8_raw[0]);
+      const double w2 = wrapPi(q6[4]);
       const double wrist_pen = 1.0 / (std::fabs(std::sin(w2)) + 0.08);
 
       const double cost = bestJ + 1.3*(d0*d0) + 0.55*wrist_pen;
@@ -610,6 +554,40 @@ private:
     }
 
     q_seed8_raw = makeSeed8(best_q6, q_gripper_cmd_);
+    return true;
+  }
+
+  // >>> FIX: movimento con yaw VINCOLATO (solo yaw o yaw+pi), niente +/- 90
+  bool tryMoveYawOrPi(double px, double py, double pz, double yaw,
+                      const char* tag, double max_jump,
+                      std::vector<double>& q_seed8_raw)
+  {
+    std::vector<double> q6_raw;
+    double bestJ = 0.0;
+
+    const double yaw0 = snap90(yaw);
+    if (!solveBestYaw(px, py, pz, yaw0, q_seed8_raw, q6_raw, bestJ)) {
+      ROS_WARN("IK failed %s (yaw or pi).", tag);
+      return false;
+    }
+
+    if (bestJ > max_jump) {
+      ROS_WARN("IK jump too large at %s: %.3f > %.3f.", tag, bestJ, max_jump);
+      return false;
+    }
+    if (nearWristSingularity(q6_raw)) {
+      ROS_WARN("Near wrist singularity at %s (yaw or pi).", tag);
+      return false;
+    }
+
+    ROS_INFO("Move %s (jump=%.3f) [yaw fixed/pi]", tag, bestJ);
+    publishJointTarget(q6_raw);
+    if (!waitAck(ack_timeout_)) {
+      ROS_WARN("Ack timeout %s.", tag);
+      return false;
+    }
+
+    q_seed8_raw = makeSeed8(q6_raw, q_gripper_cmd_);
     return true;
   }
 
@@ -683,7 +661,6 @@ private:
       (void)tryMoveBestYaw(0.22, 0.20, z_up, yaw, "retreat_safe", 3.8, q_seed8_raw);
     };
 
-    // obj
     const double x_in = obj.pose.position.x;
     const double y_in = obj.pose.position.y;
     const double z_in = obj.pose.position.z;
@@ -701,7 +678,7 @@ private:
       tf2::fromMsg(obj.pose.orientation, qtmp);
       tf2::Matrix3x3(qtmp).getRPY(rr, pp, yaw_obj);
     }
-    yaw_obj = snap90(wrapPi(yaw_obj + yaw_gripper_offset_));
+    yaw_obj = snap90(yaw_obj);
 
     const double rxy = std::sqrt(x_in*x_in + y_in*y_in);
     if (rxy < min_xy_radius_) {
@@ -743,70 +720,41 @@ private:
     const double drop_x_eff = drop_x_;
     const double drop_y_eff = dropYForClass(class_id);
 
-    // choose yaw_grasp: yaw_obj or yaw_obj+90 by IK on z_pre
-    double yaw_grasp = yaw_obj;
-    {
-      struct Cand { double yaw; double jump; };
-      std::vector<Cand> good;
-      auto eval = [&](double yaw_try){
-        std::vector<double> q6;
-        double bestJ = 0.0;
-        if (!solveBestYaw(x_in, y_in, z_pre, yaw_try, q_seed8_raw, q6, bestJ)) return;
-        if (nearWristSingularity(q6)) return;
-        good.push_back({snap90(yaw_try), bestJ});
-      };
-      eval(yaw_obj);
-      eval(wrapPi(yaw_obj + M_PI_2));
-      if (!good.empty()) {
-        std::sort(good.begin(), good.end(), [](const Cand& a, const Cand& b){ return a.jump < b.jump; });
-        yaw_grasp = good.front().yaw;
-      }
-    }
+    // >>> FIX: yaw di presa = yaw_obj + offset pinza (e snap 90)
+    const double yaw_grasp = snap90(wrapPi(yaw_obj + yaw_gripper_offset_));
 
     const double yaw_place = 0.0; // richiesto
 
     ROS_WARN("OBJ x=%.3f y=%.3f z=%.3f yaw_obj=%.3f yaw_grasp=%.3f yaw_place=%.3f class=%d name=%s -> DROP (%.3f,%.3f)",
              x_in, y_in, z_in, yaw_obj, yaw_grasp, yaw_place, class_id, obj_name.c_str(), drop_x_eff, drop_y_eff);
 
-    // open (NO MOVEMENT: solo comando gripper)
     doOpen("pre");
 
-    // ------------------------------------------------------------
-    // MOD: tolto lo "start_stage" iniziale che faceva il lift inutile
-    // e ti "accartocciava" il robot all'avvio del pick&place.
-    //
-    // Prima c'era:
-    //   tryMoveBestYaw(x_stage, y_stage, z_safe + 0.24, ...)
-    //
-    // Ora si va direttamente agli approach pregrasp/pregrasp_high.
-    // ------------------------------------------------------------
-
-    // approach
+    // approach (yaw vincolato: solo yaw o yaw+pi)
     double x = x_in, y = y_in;
 
-    if (!tryMoveBestYaw(x, y, z_pre_high, yaw_grasp, "pregrasp_high", 3.4, q_seed8_raw)) { retreatSafe(z_safe, yaw_grasp); return; }
-    if (!tryMoveBestYaw(x, y, z_pre,      yaw_grasp, "pregrasp",      3.2, q_seed8_raw)) { retreatSafe(z_safe, yaw_grasp); return; }
-    if (!tryMoveBestYaw(x, y, z_grasp,    yaw_grasp, "grasp",         3.2, q_seed8_raw)) { retreatSafe(z_safe, yaw_grasp); return; }
+    if (!tryMoveYawOrPi(x, y, z_pre_high, yaw_grasp, "pregrasp_high", 3.4, q_seed8_raw)) { retreatSafe(z_safe, yaw_grasp); return; }
+    if (!tryMoveYawOrPi(x, y, z_pre,      yaw_grasp, "pregrasp",      3.2, q_seed8_raw)) { retreatSafe(z_safe, yaw_grasp); return; }
+    if (!tryMoveYawOrPi(x, y, z_grasp,    yaw_grasp, "grasp",         3.2, q_seed8_raw)) { retreatSafe(z_safe, yaw_grasp); return; }
 
     // micro deeper
     {
       const double z_deeper = std::max(z_grasp - 0.004, z_grasp_min);
       if (z_deeper < z_grasp - 1e-4) {
-        (void)tryMoveBestYaw(x, y, z_deeper, yaw_grasp, "grasp_deeper", 3.2, q_seed8_raw);
+        (void)tryMoveYawOrPi(x, y, z_deeper, yaw_grasp, "grasp_deeper", 3.2, q_seed8_raw);
       }
     }
 
     doClose(close_cmd_first, "hold1");
     if (class_id == 6) doClose(close_cmd_final, "hold2_final");
 
-    // lift/carry
+    // lift/carry (qui lasciamo bestYaw: può aiutare a evitare singolarità)
     const double z_detach = z_safe + 0.11;
     const double z_carry  = z_safe + 0.28;
 
     if (!tryMoveBestYaw(x, y, z_detach, yaw_grasp, "detach_up", 3.8, q_seed8_raw)) { retreatSafe(z_safe, yaw_grasp); return; }
     if (!tryMoveBestYaw(x, y, z_carry,  yaw_grasp, "carry_up",  3.8, q_seed8_raw)) { retreatSafe(z_safe, yaw_grasp); return; }
 
-    // lane
     const double y_lane = 0.20;
 
     if (!tryMoveBestYaw(0.18, y,      z_carry, yaw_grasp, "carry_forward_safe", 3.6, q_seed8_raw)) { retreatSafe(z_safe, yaw_grasp); return; }
@@ -814,14 +762,12 @@ private:
     if (!tryMoveBestYaw(drop_x_eff, y_lane,     z_carry, yaw_grasp, "carry_lane_safeY",     3.8, q_seed8_raw)) { retreatSafe(z_safe, yaw_grasp); return; }
     if (!tryMoveBestYaw(drop_x_eff, drop_y_eff, z_carry, yaw_grasp, "carry_lane_to_dropY",  3.8, q_seed8_raw)) { retreatSafe(z_safe, yaw_grasp); return; }
 
-    // align yaw=0 (no fallback)
     if (!tryMoveFixedYaw(drop_x_eff, drop_y_eff, z_carry, yaw_place, "yaw_align_place_0", 4.2, q_seed8_raw)) {
       ROS_WARN("Cannot align to yaw=0 -> abort to keep yaw=0 constraint");
       retreatSafe(z_safe, yaw_grasp);
       return;
     }
 
-    // PLACE: scende, poi apre
     const double z_place_pre = drop_z_safe + place_pre_up_;
     if (!tryMoveFixedYaw(drop_x_eff, drop_y_eff, z_place_pre, yaw_place, "place_pre", 4.2, q_seed8_raw)) {
       retreatSafe(z_safe, yaw_grasp);
@@ -846,7 +792,7 @@ private:
 
   // ---------- Members ----------
   std::mutex mtx_;
-double yaw_gripper_offset_ = M_PI_2;
+
   ros::Publisher pub_req_;
   ros::Time last_req_;
 
@@ -873,6 +819,8 @@ double yaw_gripper_offset_ = M_PI_2;
   double drop_x_, drop_y_, drop_z_;
   double place_pre_up_, safe_up_after_open_;
   double fixed_roll_, fixed_pitch_;
+
+  double yaw_gripper_offset_ = M_PI_2; // +90° default
 
   double table_z_, z_clear_;
   double hand_open_, hand_close_;
