@@ -3,7 +3,7 @@ For this project we have used servicies in Locosim. please follow the instuction
 
 https://github.com/idra-lab/locosim.git
 
-clone this repo into ros_ws/src in locosim. This repo is work in progress, some details to run the code will be available soon.
+clone this repo into ros_ws/src in locosim.
 
 ## Description
 A number of objects (e.g., mega-blocks) are stored without any specific order on a stand
