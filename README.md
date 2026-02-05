@@ -21,43 +21,33 @@ UR5 with a soft two fingers gripper
 physics simulation with Gazebo
 
 ## To run
--  do everything to launch ur5_generic.py with the sources, exports, roscore before
 
-  
-  
-  vision node......
-  
+shell 1:
+-  do everything to launch ur5_generic.py with the sources, exports
+
+shell 2:
+- roscore
+
+shell 3:
+
+ task_planning/motion_planning:
+ - rosparam set /robot_description "$(rosparam get /ur5/robot_description)"
+- roslaunch lab_myproject pick_place_system.launch
+
+shell 4:
+
  spawn blocks:
- - source ~/ros_ws/devel/setup.bash
  - export GAZEBO_MODEL_PATH=$GAZEBO_MODEL_PATH:/root/ros_ws/src/lab_myproject/models
  -  rosrun lab_myproject spawn_random_blocks.py
    
- task planning:
- - source /opt/ros/noetic/setup.bash
- - source ~/ros_ws/devel/setup.bash
- - rosparam set /robot_description "$(rosparam get /ur5/robot_description)"
-- roslaunch lab_myproject pick_place_system.launch
-  
+shell 5:
 
+vision node:
 
-## To Test Vision node
-
-U will need a minimum of 2 terminals:
-1. -> terminal 1
-2. -> terminal 2
-
-1.  cd ~/ros_ws
-    catkin_make (optional)
-    source devel/setup.bash
-  
-2.  cd ~/ros_ws
-    source devel/setup.bash
-
-1.  python3 -i src/locosim/robot_control/base_controllers/ur5_generic.py
-
-2.  rosrun lab_myproject spawn_random_blocks.py
-
-2.  rosrun lab_myproject perception_6d_node.py   _publish_on_request:=true   _yaw_mode:=short   _yaw_snap_enable:=true   _yaw_snap_step:=1.57079632679   _xy_use_rect_center:=true   _xy_center_blend:=0.65
+- source /root/venv/bin/activate
+- source /opt/ros/noetic/setup.bash
+- source /root/ros_ws/devel/setup.bash
+- rosrun lab_myproject perception_6d_node.py _publish_on_request:=true _yaw_mode:=short _yaw_snap_enable:=true _yaw_snap_step:=1.57079632679 _xy_use_rect_center:=true _xy_center_blend:=0.65
 
 to see the prediction on RVIZ u will need to press:
 Add → Image
@@ -65,12 +55,6 @@ Topic: /perception/debug/image_raw
 Transport hint: raw
 Queue size: 2
 
-3. rostopic list | grep detected_object_pose (if u want to see the classifications of the found objects)
-
-if you need it
-- source /root/venv/bin/activate
-- source /opt/ros/noetic/setup.bash
-- source /root/ros_ws/devel/setup.bash
 
 ## Report
 Project report: [Download PDF](./Pick_and_Place_report.pdf)
