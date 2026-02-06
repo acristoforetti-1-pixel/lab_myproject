@@ -24,7 +24,7 @@ Main features:
 """
 
 import os
-# limita thread (aiuta stabilità con torch/opencv)
+
 os.environ.setdefault("OMP_NUM_THREADS", "1")
 os.environ.setdefault("MKL_NUM_THREADS", "1")
 os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
@@ -76,7 +76,7 @@ class Perception6DNode:
     def __init__(self):
         rospy.init_node("perception_6d_node", anonymous=False)
 
-        # riduce rogne threading cv2
+       
         try:
             cv2.setNumThreads(0)
         except Exception:
@@ -157,12 +157,12 @@ class Perception6DNode:
         #  - "long"  -> yaw asse lungo
         #  - "short" -> yaw asse corto (= long + 90°)
         #
-        # MOD: default "short" per pinza a 2 dita (presa sulla zona stretta)
+        # MOD: default "short" per pinza a 2 dita
         self.yaw_mode = str(rospy.get_param("~yaw_mode", "short")).strip().lower()
         if self.yaw_mode not in ("long", "short"):
             self.yaw_mode = "short"
 
-        # offset tool fisso (radianti). Se vuoi 90°: 1.5708
+        # offset tool fisso (radianti). 90°: 1.5708
         self.yaw_tool_offset = float(rospy.get_param("~yaw_tool_offset", 0.0))
 
         # SNAP yaw (riduce jitter / ambiguità) – default ON a 90°
@@ -170,7 +170,7 @@ class Perception6DNode:
         self.yaw_snap_step = float(rospy.get_param("~yaw_snap_step", math.pi / 2.0))  # 90°
         self.yaw_outlier_deg = float(rospy.get_param("~yaw_outlier_deg", 25.0))       # request-mode reject
 
-        # minAreaRect (OBB) robusto
+        # minAreaRect (OBB) 
         self.yaw_use_rect = bool(rospy.get_param("~yaw_use_rect", True))
         self.yaw_rect_min_aspect = float(rospy.get_param("~yaw_rect_min_aspect", 1.07))
         self.yaw_rect_min_pts = int(rospy.get_param("~yaw_rect_min_pts", 120))
@@ -180,7 +180,7 @@ class Perception6DNode:
         self.yaw_min_anisotropy = float(rospy.get_param("~yaw_min_anisotropy", 1.10))
         self.yaw_pca_min_pts = int(rospy.get_param("~yaw_pca_min_pts", 140))
 
-        # usa punti obj completi per yaw (consigliato)
+        # punti obj  per yaw 
         self.yaw_use_obj_points = bool(rospy.get_param("~yaw_use_obj_points", True))
 
         # smoothing leggero dello yaw
@@ -188,7 +188,7 @@ class Perception6DNode:
         self.yaw_smooth_alpha = float(rospy.get_param("~yaw_smooth_alpha", 0.35))
         self._yaw_last = None  # yaw filtrato (rad)
 
-        # ---- NEW: XY più preciso con centro OBB (minAreaRect) ----
+        # -- XY con centro OBB (minAreaRect) ----
         self.xy_use_rect_center = bool(rospy.get_param("~xy_use_rect_center", True))
         self.xy_rect_center_min_pts = int(rospy.get_param("~xy_rect_center_min_pts", 160))
         # 0.0 = solo densest+median, 1.0 = solo centro rect
@@ -317,7 +317,7 @@ class Perception6DNode:
         rospy.loginfo("[perception6d] caminfo fx=%.2f fy=%.2f cx=%.2f cy=%.2f (w=%d h=%d)",
                       self.K0["fx"], self.K0["fy"], self.K0["cx"], self.K0["cy"], self.K0["w"], self.K0["h"])
 
-    # ---------------- utils ----------------
+    
     @staticmethod
     def _draw_label(img, x1, y1, x2, y2, text, color=(0, 255, 0), thick=2):
         cv2.rectangle(img, (x1, y1), (x2, y2), color, thick)
@@ -607,11 +607,11 @@ class Perception6DNode:
         # tool offset
         yaw = wrap_pi(yaw + self.yaw_tool_offset)
 
-        # snap (prima del filtro)
+        # snap 
         if self.yaw_snap_enable:
             yaw = self._snap_angle(yaw, self.yaw_snap_step)
 
-        # smoothing (spazio circolare)
+        
         if self.yaw_smooth:
             if self._yaw_last is None:
                 self._yaw_last = yaw
@@ -628,7 +628,7 @@ class Perception6DNode:
 
         return float(yaw)
 
-    # ---------------- main callback ----------------
+    # ---------------- main callback ---------------
     def _synced_cb(self, color_msg: Image, depth_msg: Image):
         if self.K0 is None:
             rospy.logwarn_throttle(5.0, "[perception6d] waiting for camera_info...")
@@ -813,7 +813,7 @@ class Perception6DNode:
                 if np.count_nonzero(obj) >= 180:
                     have_obj_pts = True
 
-                    # TOP usato per XY (precisione)
+                    # top usato per XY (precisione)
                     dz_obj = dz[obj]
                     thr = float(np.percentile(dz_obj, np.clip(self.top_keep_percentile, 40.0, 95.0)))
                     top = obj & (dz >= thr)
@@ -864,7 +864,7 @@ class Perception6DNode:
                         if yaw_long is not None:
                             yaw_out = self._apply_yaw_mode_and_offset(yaw_long)
 
-                        # ✅ XY più preciso: fondi centro rect con centro robusto
+                        # XY more precise
                         if self.xy_use_rect_center and rect_center is not None and xy_yaw.shape[0] >= self.xy_rect_center_min_pts:
                             a = float(self.xy_center_blend)
                             x_med = (1.0 - a) * float(x_rob) + a * float(rect_center[0])
