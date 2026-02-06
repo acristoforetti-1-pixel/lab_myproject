@@ -24,6 +24,10 @@ physics simulation with Gazebo
 
 shell 1:
 -  do everything to launch ur5_generic.py with the sources, exports
+-  source /opt/ros/noetic/setup.bash
+-  source ~/ros_ws/devel/setup.bash
+-   export ROS_MASTER_URI=http://localhost:11311
+-   export ROS_HOSTNAME=localhost
 
 shell 2:
 - roscore
