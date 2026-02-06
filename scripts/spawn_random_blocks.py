@@ -66,9 +66,7 @@ NO_GO_RECT = {
 MODELS_DIR = os.path.expanduser("~/ros_ws/src/lab_myproject/models")
 
 
-# -------------------------------------------------------
-# UTILS
-# -------------------------------------------------------
+
 def get_available_models():
     """
     @brief Retrieve all available block models.
@@ -228,9 +226,9 @@ def random_pose_non_overlapping(existing_xy_base, get_state_srv):
     return pose_w, (x_b, y_b)
 
 
-# -------------------------------------------------------
-# FIX FISICA GAZEBO (senza modificare i modelli)
-# -------------------------------------------------------
+
+# FIX FISICA GAZEBO
+
 def fix_gazebo_physics():
     """
     @brief Override Gazebo physics parameters for stable object spawning.
@@ -273,9 +271,9 @@ def fix_gazebo_physics():
         rospy.logwarn("Physics not changed: %s", ok.status_message)
 
 
-# -------------------------------------------------------
+
 # MAIN
-# -------------------------------------------------------
+
 def main():
     """
     @brief Main entry point for random block spawning.
