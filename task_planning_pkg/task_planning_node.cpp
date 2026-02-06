@@ -200,7 +200,7 @@ public:
   }
 
 private:
-  // -------------------- small utils --------------------
+
   static double clamp(double x, double lo, double hi) {
     return std::max(lo, std::min(hi, x));
   }
@@ -557,7 +557,6 @@ private:
     return true;
   }
 
-  // >>> FIX: movimento con yaw VINCOLATO (solo yaw o yaw+pi), niente +/- 90
   bool tryMoveYawOrPi(double px, double py, double pz, double yaw,
                       const char* tag, double max_jump,
                       std::vector<double>& q_seed8_raw)
@@ -720,10 +719,10 @@ private:
     const double drop_x_eff = drop_x_;
     const double drop_y_eff = dropYForClass(class_id);
 
-    // >>> FIX: yaw di presa = yaw_obj + offset pinza (e snap 90)
+    // yaw di presa = yaw_obj + offset pinza (e snap 90)
     const double yaw_grasp = snap90(wrapPi(yaw_obj + yaw_gripper_offset_));
 
-    const double yaw_place = 0.0; // richiesto
+    const double yaw_place = 0.0;
 
     ROS_WARN("OBJ x=%.3f y=%.3f z=%.3f yaw_obj=%.3f yaw_grasp=%.3f yaw_place=%.3f class=%d name=%s -> DROP (%.3f,%.3f)",
              x_in, y_in, z_in, yaw_obj, yaw_grasp, yaw_place, class_id, obj_name.c_str(), drop_x_eff, drop_y_eff);
