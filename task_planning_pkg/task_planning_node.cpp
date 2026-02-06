@@ -702,7 +702,7 @@ private:
 
     double close_cmd_first = hand_close_;
     double close_cmd_final = hand_close_;
-    if (class_id == 6) { close_cmd_first = 0.20; close_cmd_final = 0.10; }
+   
 
     auto dropYForClass = [&](int cid)->double {
       switch (cid) {
@@ -746,7 +746,7 @@ private:
     }
 
     doClose(close_cmd_first, "hold1");
-    if (class_id == 6) doClose(close_cmd_final, "hold2_final");
+   
 
     // lift/carry (qui lasciamo bestYaw: può aiutare a evitare singolarità)
     const double z_detach = z_safe + 0.11;
