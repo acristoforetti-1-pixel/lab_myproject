@@ -30,6 +30,10 @@ with a soft two fingers gripper
 ## Simulation
 physics simulation with Gazebo
 
+<img width="1920" height="995" alt="Screenshot (111)" src="https://github.com/user-attachments/assets/51be753d-5ffb-4e3b-be49-addd2e74638c" />
+
+
+
 ## To run
 
 shell 1:
