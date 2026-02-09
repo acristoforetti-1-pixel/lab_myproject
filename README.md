@@ -15,9 +15,15 @@ a different stand according to a specified order (final stand). A calibrated 3D 
 locate the different objects and to detect their position in the initial stand. 
 
 ## Robot
-UR5 (6-DoFs arm) with a soft two fingers gripper
+UR5 (6-DoFs arm) 
 
 <img width="850" height="405" alt="immagine" src="https://github.com/user-attachments/assets/76dc5b37-47b0-4b75-bd00-bf277d606926" />
+
+with a soft two fingers gripper
+
+<img width="1020" height="570" alt="immagine" src="https://github.com/user-attachments/assets/88f3f0bb-0a64-464e-86d4-ebd6855df5cb" />
+
+
 
 
 ## Simulation
