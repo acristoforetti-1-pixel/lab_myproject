@@ -76,6 +76,7 @@ Queue size: 2
 
 
 ## Report
-Project report: [Download PDF](./Pick_and_Place_report.pdf)
+
+Project report: [Download PDF](https://github.com/user-attachments/files/25216682/Pick_and_Place_report.1.pdf)
 
 Demo video: https://youtu.be/f1nDkgo8dq8?si=jhaF0ubgvUTynl-L
