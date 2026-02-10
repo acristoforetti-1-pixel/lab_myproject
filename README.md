@@ -38,15 +38,25 @@ physics simulation with Gazebo
 ## To run
 
 shell 1:
--  do everything to launch ur5_generic.py with the sources, exports
--  source /opt/ros/noetic/setup.bash
--  source ~/ros_ws/devel/setup.bash
--   export ROS_MASTER_URI=http://localhost:11311
--   export ROS_HOSTNAME=localhost
-
+```bash
+ do everything to launch ur5_generic.py with the sources, exports
+```
+```bash
+ source /opt/ros/noetic/setup.bash
+ ```
+```bash
+ source ~/ros_ws/devel/setup.bash
+```
+```bash
+ export ROS_MASTER_URI=http://localhost:11311
+ ```
+```bash
+ export ROS_HOSTNAME=localhost
+```
 shell 2:
-- roscore
-
+```bash
+roscore
+```
 shell 3:
 
  task_planning/motion_planning:
