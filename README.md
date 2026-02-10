@@ -17,7 +17,8 @@ locate the different objects and to detect their position in the initial stand.
 ## Robot
 UR5 (6-DoFs arm) 
 
-<img width="1685" height="728" alt="immagine" src="https://github.com/user-attachments/assets/6f671314-58c6-4df3-8036-3860a86d2fc8" />
+<img width="500" height="492" alt="immagine" src="https://github.com/user-attachments/assets/318bf9fd-c273-4edd-abe1-e914c1931eed" />
+
 
 
 with a soft two fingers gripper
