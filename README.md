@@ -38,9 +38,9 @@ physics simulation with Gazebo
 ## To run
 
 shell 1:
-```bash
+
  do everything to launch ur5_generic.py with the sources, exports
-```
+
 ```bash
  source /opt/ros/noetic/setup.bash
  ```
@@ -60,23 +60,37 @@ roscore
 shell 3:
 
  task_planning/motion_planning:
- - rosparam set /robot_description "$(rosparam get /ur5/robot_description)"
-- roslaunch lab_myproject pick_place_system.launch
-
+ ```bash
+ rosparam set /robot_description "$(rosparam get /ur5/robot_description)"
+```
+```bash
+ roslaunch lab_myproject pick_place_system.launch
+```
 shell 4:
 
  spawn blocks:
- - export GAZEBO_MODEL_PATH=$GAZEBO_MODEL_PATH:/root/ros_ws/src/lab_myproject/models
- -  rosrun lab_myproject spawn_random_blocks.py
+ ```bash
+ export GAZEBO_MODEL_PATH=$GAZEBO_MODEL_PATH:/root/ros_ws/src/lab_myproject/models
+ ```
+```bash
+  rosrun lab_myproject spawn_random_blocks.py
+```
    
 shell 5:
 
 vision node:
-
-- source /root/venv/bin/activate
-- source /opt/ros/noetic/setup.bash
-- source /root/ros_ws/devel/setup.bash
-- rosrun lab_myproject perception_6d_node.py _publish_on_request:=true _yaw_mode:=short _yaw_snap_enable:=true _yaw_snap_step:=1.57079632679 _xy_use_rect_center:=true _xy_center_blend:=0.65
+```bash
+source /root/venv/bin/activate
+```
+```bash
+ source /opt/ros/noetic/setup.bash
+```
+```bash
+ source /root/ros_ws/devel/setup.bash
+```
+```bash
+ rosrun lab_myproject perception_6d_node.py _publish_on_request:=true _yaw_mode:=short _yaw_snap_enable:=true _yaw_snap_step:=1.57079632679 _xy_use_rect_center:=true _xy_center_blend:=0.65
+```
 
 to see the prediction on RVIZ u will need to press:
 Add → Image
