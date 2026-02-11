@@ -1,0 +1,115 @@
+\doxysection{perception\+\_\+6d\+\_\+node Namespace Reference}
+\hypertarget{namespaceperception__6d__node}{}\label{namespaceperception__6d__node}\index{perception\_6d\_node@{perception\_6d\_node}}
+\doxysubsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+class \mbox{\hyperlink{classperception__6d__node_1_1Perception6DNode}{Perception6\+DNode}}
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+float \mbox{\hyperlink{namespaceperception__6d__node_a737ee6f508fe1b96dbc389feacc2e329}{wrap\+\_\+pi}} (float a)
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+str \mbox{\hyperlink{namespaceperception__6d__node_a5d800ae3bb22e70dd2f0cb6b63a8d9eb}{DEFAULT\+\_\+\+MODEL\+\_\+\+PATH}} = "{}/root/ros\+\_\+ws/src/lab\+\_\+myproject/data/runs/detect/train/weights/best.\+pt"{}
+\item 
+str \mbox{\hyperlink{namespaceperception__6d__node_a4408245f39b90b777dc681e5aa7c9ce1}{DEFAULT\+\_\+\+COLOR\+\_\+\+TOPIC}} = "{}/ur5/zed\+\_\+node/left/image\+\_\+rect\+\_\+color"{}
+\item 
+str \mbox{\hyperlink{namespaceperception__6d__node_acffcbcb2112cf48e0f59faad2baeb43b}{DEFAULT\+\_\+\+DEPTH\+\_\+\+TOPIC}} = "{}/ur5/zed\+\_\+node/depth/depth\+\_\+registered"{}
+\item 
+str \mbox{\hyperlink{namespaceperception__6d__node_a0fea1e4db03f6706a59527a21a8a2627}{DEFAULT\+\_\+\+CAMINFO\+\_\+\+TOPIC}} = "{}/ur5/zed\+\_\+node/left/camera\+\_\+info"{}
+\item 
+str \mbox{\hyperlink{namespaceperception__6d__node_a0688e5ac85721f046af9774a88707e42}{DEFAULT\+\_\+\+FRAME\+\_\+\+BASE}} = "{}base\+\_\+link"{}
+\item 
+float \mbox{\hyperlink{namespaceperception__6d__node_a2155679cc7f8c23550902b8044e89d29}{DEFAULT\+\_\+\+CONF\+\_\+\+THRESH}} = 0.\+25
+\item 
+float \mbox{\hyperlink{namespaceperception__6d__node_ad32c1fce75e5705b6529f29ba0767063}{DEPTH\+\_\+\+MIN}} = 0.\+02
+\item 
+float \mbox{\hyperlink{namespaceperception__6d__node_acbf29da8e8c67ac1c06a7c58ea0665c6}{DEPTH\+\_\+\+MAX}} = 5.\+0
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\begin{DoxyVerb}@file perception_6d_node.py
+@brief 6D pose estimation of rigid blocks using RGB-D data and YOLOv8.
+
+This ROS node performs perception for a pick-and-place task by combining
+deep-learning-based object detection on RGB images with geometric processing
+of depth data. The node estimates the 3D position and yaw orientation of
+rigid, non-deformable blocks placed on a planar surface.
+
+Detected object poses are expressed in the robot base frame and published
+to the /vision namespace for consumption by task planning and motion planning
+modules. A request-based mode is supported to provide temporally filtered
+pose estimates on demand.
+
+Main features:
+- YOLOv8 object detection on RGB images
+- Robust depth sampling inside bounding boxes
+- Table plane height estimation
+- 3D position estimation using robust statistics
+- Yaw estimation using geometric analysis (minAreaRect / PCA)
+- Optional request-based pose publication
+\end{DoxyVerb}
+ 
+
+\doxysubsection{Function Documentation}
+\Hypertarget{namespaceperception__6d__node_a737ee6f508fe1b96dbc389feacc2e329}\label{namespaceperception__6d__node_a737ee6f508fe1b96dbc389feacc2e329} 
+\index{perception\_6d\_node@{perception\_6d\_node}!wrap\_pi@{wrap\_pi}}
+\index{wrap\_pi@{wrap\_pi}!perception\_6d\_node@{perception\_6d\_node}}
+\doxysubsubsection{\texorpdfstring{wrap\_pi()}{wrap\_pi()}}
+{\footnotesize\ttfamily  float perception\+\_\+6d\+\_\+node.\+wrap\+\_\+pi (\begin{DoxyParamCaption}\item[{float}]{a }\end{DoxyParamCaption})}
+
+
+
+\doxysubsection{Variable Documentation}
+\Hypertarget{namespaceperception__6d__node_a0fea1e4db03f6706a59527a21a8a2627}\label{namespaceperception__6d__node_a0fea1e4db03f6706a59527a21a8a2627} 
+\index{perception\_6d\_node@{perception\_6d\_node}!DEFAULT\_CAMINFO\_TOPIC@{DEFAULT\_CAMINFO\_TOPIC}}
+\index{DEFAULT\_CAMINFO\_TOPIC@{DEFAULT\_CAMINFO\_TOPIC}!perception\_6d\_node@{perception\_6d\_node}}
+\doxysubsubsection{\texorpdfstring{DEFAULT\_CAMINFO\_TOPIC}{DEFAULT\_CAMINFO\_TOPIC}}
+{\footnotesize\ttfamily str perception\+\_\+6d\+\_\+node.\+DEFAULT\+\_\+\+CAMINFO\+\_\+\+TOPIC = "{}/ur5/zed\+\_\+node/left/camera\+\_\+info"{}}
+
+\Hypertarget{namespaceperception__6d__node_a4408245f39b90b777dc681e5aa7c9ce1}\label{namespaceperception__6d__node_a4408245f39b90b777dc681e5aa7c9ce1} 
+\index{perception\_6d\_node@{perception\_6d\_node}!DEFAULT\_COLOR\_TOPIC@{DEFAULT\_COLOR\_TOPIC}}
+\index{DEFAULT\_COLOR\_TOPIC@{DEFAULT\_COLOR\_TOPIC}!perception\_6d\_node@{perception\_6d\_node}}
+\doxysubsubsection{\texorpdfstring{DEFAULT\_COLOR\_TOPIC}{DEFAULT\_COLOR\_TOPIC}}
+{\footnotesize\ttfamily str perception\+\_\+6d\+\_\+node.\+DEFAULT\+\_\+\+COLOR\+\_\+\+TOPIC = "{}/ur5/zed\+\_\+node/left/image\+\_\+rect\+\_\+color"{}}
+
+\Hypertarget{namespaceperception__6d__node_a2155679cc7f8c23550902b8044e89d29}\label{namespaceperception__6d__node_a2155679cc7f8c23550902b8044e89d29} 
+\index{perception\_6d\_node@{perception\_6d\_node}!DEFAULT\_CONF\_THRESH@{DEFAULT\_CONF\_THRESH}}
+\index{DEFAULT\_CONF\_THRESH@{DEFAULT\_CONF\_THRESH}!perception\_6d\_node@{perception\_6d\_node}}
+\doxysubsubsection{\texorpdfstring{DEFAULT\_CONF\_THRESH}{DEFAULT\_CONF\_THRESH}}
+{\footnotesize\ttfamily float perception\+\_\+6d\+\_\+node.\+DEFAULT\+\_\+\+CONF\+\_\+\+THRESH = 0.\+25}
+
+\Hypertarget{namespaceperception__6d__node_acffcbcb2112cf48e0f59faad2baeb43b}\label{namespaceperception__6d__node_acffcbcb2112cf48e0f59faad2baeb43b} 
+\index{perception\_6d\_node@{perception\_6d\_node}!DEFAULT\_DEPTH\_TOPIC@{DEFAULT\_DEPTH\_TOPIC}}
+\index{DEFAULT\_DEPTH\_TOPIC@{DEFAULT\_DEPTH\_TOPIC}!perception\_6d\_node@{perception\_6d\_node}}
+\doxysubsubsection{\texorpdfstring{DEFAULT\_DEPTH\_TOPIC}{DEFAULT\_DEPTH\_TOPIC}}
+{\footnotesize\ttfamily str perception\+\_\+6d\+\_\+node.\+DEFAULT\+\_\+\+DEPTH\+\_\+\+TOPIC = "{}/ur5/zed\+\_\+node/depth/depth\+\_\+registered"{}}
+
+\Hypertarget{namespaceperception__6d__node_a0688e5ac85721f046af9774a88707e42}\label{namespaceperception__6d__node_a0688e5ac85721f046af9774a88707e42} 
+\index{perception\_6d\_node@{perception\_6d\_node}!DEFAULT\_FRAME\_BASE@{DEFAULT\_FRAME\_BASE}}
+\index{DEFAULT\_FRAME\_BASE@{DEFAULT\_FRAME\_BASE}!perception\_6d\_node@{perception\_6d\_node}}
+\doxysubsubsection{\texorpdfstring{DEFAULT\_FRAME\_BASE}{DEFAULT\_FRAME\_BASE}}
+{\footnotesize\ttfamily str perception\+\_\+6d\+\_\+node.\+DEFAULT\+\_\+\+FRAME\+\_\+\+BASE = "{}base\+\_\+link"{}}
+
+\Hypertarget{namespaceperception__6d__node_a5d800ae3bb22e70dd2f0cb6b63a8d9eb}\label{namespaceperception__6d__node_a5d800ae3bb22e70dd2f0cb6b63a8d9eb} 
+\index{perception\_6d\_node@{perception\_6d\_node}!DEFAULT\_MODEL\_PATH@{DEFAULT\_MODEL\_PATH}}
+\index{DEFAULT\_MODEL\_PATH@{DEFAULT\_MODEL\_PATH}!perception\_6d\_node@{perception\_6d\_node}}
+\doxysubsubsection{\texorpdfstring{DEFAULT\_MODEL\_PATH}{DEFAULT\_MODEL\_PATH}}
+{\footnotesize\ttfamily str perception\+\_\+6d\+\_\+node.\+DEFAULT\+\_\+\+MODEL\+\_\+\+PATH = "{}/root/ros\+\_\+ws/src/lab\+\_\+myproject/data/runs/detect/train/weights/best.\+pt"{}}
+
+\Hypertarget{namespaceperception__6d__node_acbf29da8e8c67ac1c06a7c58ea0665c6}\label{namespaceperception__6d__node_acbf29da8e8c67ac1c06a7c58ea0665c6} 
+\index{perception\_6d\_node@{perception\_6d\_node}!DEPTH\_MAX@{DEPTH\_MAX}}
+\index{DEPTH\_MAX@{DEPTH\_MAX}!perception\_6d\_node@{perception\_6d\_node}}
+\doxysubsubsection{\texorpdfstring{DEPTH\_MAX}{DEPTH\_MAX}}
+{\footnotesize\ttfamily float perception\+\_\+6d\+\_\+node.\+DEPTH\+\_\+\+MAX = 5.\+0}
+
+\Hypertarget{namespaceperception__6d__node_ad32c1fce75e5705b6529f29ba0767063}\label{namespaceperception__6d__node_ad32c1fce75e5705b6529f29ba0767063} 
+\index{perception\_6d\_node@{perception\_6d\_node}!DEPTH\_MIN@{DEPTH\_MIN}}
+\index{DEPTH\_MIN@{DEPTH\_MIN}!perception\_6d\_node@{perception\_6d\_node}}
+\doxysubsubsection{\texorpdfstring{DEPTH\_MIN}{DEPTH\_MIN}}
+{\footnotesize\ttfamily float perception\+\_\+6d\+\_\+node.\+DEPTH\+\_\+\+MIN = 0.\+02}
+

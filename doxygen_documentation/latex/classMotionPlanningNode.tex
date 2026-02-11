@@ -1,0 +1,411 @@
+\doxysection{Motion\+Planning\+Node Class Reference}
+\hypertarget{classMotionPlanningNode}{}\label{classMotionPlanningNode}\index{MotionPlanningNode@{MotionPlanningNode}}
+
+
+ROS node for joint-\/space motion execution.  
+
+
+\doxysubsubsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{classMotionPlanningNode_a2c7540892e64c2c58ad3e276e18d47bc}{Motion\+Planning\+Node}} ()
+\begin{DoxyCompactList}\small\item\em Construct and initialize the motion planning node. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{classMotionPlanningNode_a74cfd7b32fc98e3deb6d8772afa45674}{spin}} ()
+\begin{DoxyCompactList}\small\item\em Main execution loop. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \mbox{\hyperlink{classMotionPlanningNode_ac12b59921ba86c64d9a51869317cbc2b}{js\+Cb}} (const sensor\+\_\+msgs\+::\+Joint\+State \&msg)
+\begin{DoxyCompactList}\small\item\em Joint state callback. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{classMotionPlanningNode_a4edaae9818751bae25a5e3544c19bc57}{target\+Cb}} (const std\+\_\+msgs\+::\+Float64\+Multi\+Array \&msg)
+\begin{DoxyCompactList}\small\item\em Target joint configuration callback. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{classMotionPlanningNode_af05fd7600cbe4bc219fa768851b9336b}{step}} ()
+\begin{DoxyCompactList}\small\item\em Execute one interpolation step of the active trajectory. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{classMotionPlanningNode_a5c3b54ace5b9d00be71bb6b8c1455f86}{publish\+Cmd8}} (const std\+::vector$<$ double $>$ \&arm6, const std\+::vector$<$ double $>$ \&hand2)
+\item 
+void \mbox{\hyperlink{classMotionPlanningNode_ae9e1e2ae314d3fc8d1b19dda6a570528}{publish\+Cmd\+Raw}} (const std\+::vector$<$ double $>$ \&cmd8)
+\item 
+void \mbox{\hyperlink{classMotionPlanningNode_a0de80dba81bedbfba74e6fe9637c7cd2}{publish\+Ack}} (bool ok)
+\begin{DoxyCompactList}\small\item\em Publish motion completion acknowledgement. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Static Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+static double \mbox{\hyperlink{classMotionPlanningNode_a54e50f781469649a1bb7c0e96b2cbe72}{clamp}} (double x, double lo, double hi)
+\item 
+static double \mbox{\hyperlink{classMotionPlanningNode_aa19775d72d98a17a2765f2ba25a00907}{clamp01}} (double x)
+\item 
+static double \mbox{\hyperlink{classMotionPlanningNode_a656598a1613f189bf1c7a2bd51fe6074}{wrap\+Pi}} (double a)
+\item 
+static double \mbox{\hyperlink{classMotionPlanningNode_a869912442bd8a1bde22499f9438ae516}{ang\+Diff}} (double a, double b)
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+ros\+::\+Subscriber \mbox{\hyperlink{classMotionPlanningNode_a8f015bfd83cd4540ef1b6379c82f87e5}{sub\+\_\+js\+\_\+}}
+\item 
+ros\+::\+Subscriber \mbox{\hyperlink{classMotionPlanningNode_aad56f179c13857cc04018ce391401c62}{sub\+\_\+target\+\_\+}}
+\item 
+ros\+::\+Publisher \mbox{\hyperlink{classMotionPlanningNode_a7694db0a4f94f05e21c21637de7ce5f1}{pub\+\_\+cmd\+\_\+}}
+\item 
+ros\+::\+Publisher \mbox{\hyperlink{classMotionPlanningNode_a00054067697a9c2107a20c3d92fe0b70}{pub\+\_\+ack\+\_\+}}
+\item 
+std\+::mutex \mbox{\hyperlink{classMotionPlanningNode_a45051a4089f5ad22cc509b3d89f3247a}{mtx\+\_\+}}
+\item 
+std\+::vector$<$ double $>$ \mbox{\hyperlink{classMotionPlanningNode_aa576a6977741fdce03fae92403b6231e}{q\+\_\+}}
+\item 
+std\+::vector$<$ double $>$ \mbox{\hyperlink{classMotionPlanningNode_a72379cfae15ac1407ad270f9fca1f110}{q0\+\_\+}}
+\item 
+std\+::vector$<$ double $>$ \mbox{\hyperlink{classMotionPlanningNode_a7d20ebd1b92f7ed321d12663d363afe5}{qf\+\_\+}}
+\item 
+std\+::vector$<$ double $>$ \mbox{\hyperlink{classMotionPlanningNode_a66e93e59611c08a02177dad23060d2f5}{hand\+\_\+}}
+\item 
+std\+::vector$<$ double $>$ \mbox{\hyperlink{classMotionPlanningNode_af828b21715769f1e6b12f4e4f5858759}{hand0\+\_\+}}
+\item 
+std\+::vector$<$ double $>$ \mbox{\hyperlink{classMotionPlanningNode_a369e0d9125b06b6373071fed4a3b27cf}{handf\+\_\+}}
+\item 
+std\+::vector$<$ int $>$ \mbox{\hyperlink{classMotionPlanningNode_a2b4cbf2e9858ae5f66fa680b697fd258}{idx\+\_\+arm\+\_\+}}
+\item 
+std\+::vector$<$ int $>$ \mbox{\hyperlink{classMotionPlanningNode_a11d9157847ed51a2aa51671e0c7040c1}{idx\+\_\+hand\+\_\+}}
+\item 
+bool \mbox{\hyperlink{classMotionPlanningNode_af145048f29b365dde8d7f67a5798ae23}{have\+\_\+map\+\_\+}}
+\item 
+bool \mbox{\hyperlink{classMotionPlanningNode_aa386ee9c3b9a7bfbf47e5014ae68b953}{have\+\_\+js\+\_\+}}
+\item 
+bool \mbox{\hyperlink{classMotionPlanningNode_a0adf711f68bfce84afe0046ba26b3fd1}{executing\+\_\+}}
+\item 
+ros\+::\+Time \mbox{\hyperlink{classMotionPlanningNode_ae2a45b8098f4259a152464068307995c}{t\+\_\+start\+\_\+}}
+\item 
+double \mbox{\hyperlink{classMotionPlanningNode_a6f18770b1a6c3feb82ea8465707845c6}{arm\+\_\+\+T\+\_\+}}
+\item 
+double \mbox{\hyperlink{classMotionPlanningNode_aa22d5630cdf467920d788d31397f8183}{hand\+\_\+\+T\+\_\+}}
+\item 
+double \mbox{\hyperlink{classMotionPlanningNode_ac340f7d9f3485da56e0c394fca0955de}{hand\+\_\+min\+\_\+}}
+\item 
+double \mbox{\hyperlink{classMotionPlanningNode_a5e648eb83c797597ea8fdd0db3103bc9}{hand\+\_\+max\+\_\+}}
+\item 
+bool \mbox{\hyperlink{classMotionPlanningNode_ac60cd21190339b67b1f6684eaee91a5d}{hold\+\_\+last\+\_\+command\+\_\+}}
+\item 
+double \mbox{\hyperlink{classMotionPlanningNode_a2f64bba01cf0409b296c2e49af840612}{hold\+\_\+rate\+\_\+hz\+\_\+}}
+\item 
+std\+::vector$<$ double $>$ \mbox{\hyperlink{classMotionPlanningNode_a82b24fb3521c7bf3845d6285f1c50836}{last\+\_\+cmd\+\_\+}}
+\item 
+bool \mbox{\hyperlink{classMotionPlanningNode_a42be5002271012e400a6714c2171be84}{last\+\_\+cmd\+\_\+valid\+\_\+}}
+\item 
+std\+::string \mbox{\hyperlink{classMotionPlanningNode_ad70c876e37f60c27094bc314939f279c}{js\+\_\+topic\+\_\+}}
+\item 
+std\+::string \mbox{\hyperlink{classMotionPlanningNode_ac970c37842ad0ba4543a946766d68c1b}{target\+\_\+topic\+\_\+}}
+\item 
+std\+::string \mbox{\hyperlink{classMotionPlanningNode_af6c2b797565235f4ae6b2461428c7596}{cmd\+\_\+topic\+\_\+}}
+\item 
+std\+::string \mbox{\hyperlink{classMotionPlanningNode_ad93ab727aa26a5bdb89bbd1c5174c785}{ack\+\_\+topic\+\_\+}}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+ROS node for joint-\/space motion execution. 
+
+This class implements a lightweight motion execution layer that converts joint-\/space targets into smooth reference trajectories for the robot controller. Motions are executed using cubic time scaling to ensure continuous velocity profiles.
+
+The node is designed to be triggered by a higher-\/level task planner and provides a latched acknowledgement signal upon completion of each motion. 
+
+\doxysubsection{Constructor \& Destructor Documentation}
+\Hypertarget{classMotionPlanningNode_a2c7540892e64c2c58ad3e276e18d47bc}\label{classMotionPlanningNode_a2c7540892e64c2c58ad3e276e18d47bc} 
+\index{MotionPlanningNode@{MotionPlanningNode}!MotionPlanningNode@{MotionPlanningNode}}
+\index{MotionPlanningNode@{MotionPlanningNode}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{MotionPlanningNode()}{MotionPlanningNode()}}
+{\footnotesize\ttfamily Motion\+Planning\+Node\+::\+Motion\+Planning\+Node (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Construct and initialize the motion planning node. 
+
+Loads ROS parameters, initializes publishers and subscribers, and prepares internal buffers for trajectory execution. 
+
+\doxysubsection{Member Function Documentation}
+\Hypertarget{classMotionPlanningNode_a869912442bd8a1bde22499f9438ae516}\label{classMotionPlanningNode_a869912442bd8a1bde22499f9438ae516} 
+\index{MotionPlanningNode@{MotionPlanningNode}!angDiff@{angDiff}}
+\index{angDiff@{angDiff}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{angDiff()}{angDiff()}}
+{\footnotesize\ttfamily static double Motion\+Planning\+Node\+::ang\+Diff (\begin{DoxyParamCaption}\item[{double}]{a,  }\item[{double}]{b }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [static]}, {\ttfamily [private]}}
+
+\Hypertarget{classMotionPlanningNode_a54e50f781469649a1bb7c0e96b2cbe72}\label{classMotionPlanningNode_a54e50f781469649a1bb7c0e96b2cbe72} 
+\index{MotionPlanningNode@{MotionPlanningNode}!clamp@{clamp}}
+\index{clamp@{clamp}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{clamp()}{clamp()}}
+{\footnotesize\ttfamily static double Motion\+Planning\+Node\+::clamp (\begin{DoxyParamCaption}\item[{double}]{x,  }\item[{double}]{lo,  }\item[{double}]{hi }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [static]}, {\ttfamily [private]}}
+
+\Hypertarget{classMotionPlanningNode_aa19775d72d98a17a2765f2ba25a00907}\label{classMotionPlanningNode_aa19775d72d98a17a2765f2ba25a00907} 
+\index{MotionPlanningNode@{MotionPlanningNode}!clamp01@{clamp01}}
+\index{clamp01@{clamp01}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{clamp01()}{clamp01()}}
+{\footnotesize\ttfamily static double Motion\+Planning\+Node\+::clamp01 (\begin{DoxyParamCaption}\item[{double}]{x }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [static]}, {\ttfamily [private]}}
+
+\Hypertarget{classMotionPlanningNode_ac12b59921ba86c64d9a51869317cbc2b}\label{classMotionPlanningNode_ac12b59921ba86c64d9a51869317cbc2b} 
+\index{MotionPlanningNode@{MotionPlanningNode}!jsCb@{jsCb}}
+\index{jsCb@{jsCb}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{jsCb()}{jsCb()}}
+{\footnotesize\ttfamily void Motion\+Planning\+Node\+::js\+Cb (\begin{DoxyParamCaption}\item[{const sensor\+\_\+msgs\+::\+Joint\+State \&}]{msg }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}
+
+
+
+Joint state callback. 
+
+Maps joint names to indices on first reception and continuously updates the current arm and gripper joint positions.
+
+
+\begin{DoxyParams}{Parameters}
+{\em msg} & Joint\+State message from the robot. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classMotionPlanningNode_a0de80dba81bedbfba74e6fe9637c7cd2}\label{classMotionPlanningNode_a0de80dba81bedbfba74e6fe9637c7cd2} 
+\index{MotionPlanningNode@{MotionPlanningNode}!publishAck@{publishAck}}
+\index{publishAck@{publishAck}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{publishAck()}{publishAck()}}
+{\footnotesize\ttfamily void Motion\+Planning\+Node\+::publish\+Ack (\begin{DoxyParamCaption}\item[{bool}]{ok }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}
+
+
+
+Publish motion completion acknowledgement. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em ok} & True if the motion has completed successfully. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classMotionPlanningNode_a5c3b54ace5b9d00be71bb6b8c1455f86}\label{classMotionPlanningNode_a5c3b54ace5b9d00be71bb6b8c1455f86} 
+\index{MotionPlanningNode@{MotionPlanningNode}!publishCmd8@{publishCmd8}}
+\index{publishCmd8@{publishCmd8}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{publishCmd8()}{publishCmd8()}}
+{\footnotesize\ttfamily void Motion\+Planning\+Node\+::publish\+Cmd8 (\begin{DoxyParamCaption}\item[{const std\+::vector$<$ double $>$ \&}]{arm6,  }\item[{const std\+::vector$<$ double $>$ \&}]{hand2 }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}
+
+\Hypertarget{classMotionPlanningNode_ae9e1e2ae314d3fc8d1b19dda6a570528}\label{classMotionPlanningNode_ae9e1e2ae314d3fc8d1b19dda6a570528} 
+\index{MotionPlanningNode@{MotionPlanningNode}!publishCmdRaw@{publishCmdRaw}}
+\index{publishCmdRaw@{publishCmdRaw}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{publishCmdRaw()}{publishCmdRaw()}}
+{\footnotesize\ttfamily void Motion\+Planning\+Node\+::publish\+Cmd\+Raw (\begin{DoxyParamCaption}\item[{const std\+::vector$<$ double $>$ \&}]{cmd8 }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}
+
+\Hypertarget{classMotionPlanningNode_a74cfd7b32fc98e3deb6d8772afa45674}\label{classMotionPlanningNode_a74cfd7b32fc98e3deb6d8772afa45674} 
+\index{MotionPlanningNode@{MotionPlanningNode}!spin@{spin}}
+\index{spin@{spin}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{spin()}{spin()}}
+{\footnotesize\ttfamily void Motion\+Planning\+Node\+::spin (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}}
+
+
+
+Main execution loop. 
+
+Runs the control loop at a fixed rate. While a motion is active, trajectory interpolation is performed. Otherwise, the last valid command may be re-\/published to keep the controller alive. \Hypertarget{classMotionPlanningNode_af05fd7600cbe4bc219fa768851b9336b}\label{classMotionPlanningNode_af05fd7600cbe4bc219fa768851b9336b} 
+\index{MotionPlanningNode@{MotionPlanningNode}!step@{step}}
+\index{step@{step}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{step()}{step()}}
+{\footnotesize\ttfamily void Motion\+Planning\+Node\+::step (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}
+
+
+
+Execute one interpolation step of the active trajectory. 
+
+Computes smooth cubic time-\/scaling for both arm and gripper joints and publishes the corresponding command. When the trajectory duration elapses, execution is stopped and an acknowledgement is sent. \Hypertarget{classMotionPlanningNode_a4edaae9818751bae25a5e3544c19bc57}\label{classMotionPlanningNode_a4edaae9818751bae25a5e3544c19bc57} 
+\index{MotionPlanningNode@{MotionPlanningNode}!targetCb@{targetCb}}
+\index{targetCb@{targetCb}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{targetCb()}{targetCb()}}
+{\footnotesize\ttfamily void Motion\+Planning\+Node\+::target\+Cb (\begin{DoxyParamCaption}\item[{const std\+\_\+msgs\+::\+Float64\+Multi\+Array \&}]{msg }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}
+
+
+
+Target joint configuration callback. 
+
+Receives a desired joint configuration for the arm and optionally for the gripper. The target is stored and a new trajectory execution is started.
+
+
+\begin{DoxyParams}{Parameters}
+{\em msg} & Target joint configuration \mbox{[}q1..q6,(h1,h2)\mbox{]}. \\
+\hline
+\end{DoxyParams}
+\Hypertarget{classMotionPlanningNode_a656598a1613f189bf1c7a2bd51fe6074}\label{classMotionPlanningNode_a656598a1613f189bf1c7a2bd51fe6074} 
+\index{MotionPlanningNode@{MotionPlanningNode}!wrapPi@{wrapPi}}
+\index{wrapPi@{wrapPi}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{wrapPi()}{wrapPi()}}
+{\footnotesize\ttfamily static double Motion\+Planning\+Node\+::wrap\+Pi (\begin{DoxyParamCaption}\item[{double}]{a }\end{DoxyParamCaption})\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [static]}, {\ttfamily [private]}}
+
+
+
+\doxysubsection{Member Data Documentation}
+\Hypertarget{classMotionPlanningNode_ad93ab727aa26a5bdb89bbd1c5174c785}\label{classMotionPlanningNode_ad93ab727aa26a5bdb89bbd1c5174c785} 
+\index{MotionPlanningNode@{MotionPlanningNode}!ack\_topic\_@{ack\_topic\_}}
+\index{ack\_topic\_@{ack\_topic\_}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{ack\_topic\_}{ack\_topic\_}}
+{\footnotesize\ttfamily std\+::string Motion\+Planning\+Node\+::ack\+\_\+topic\+\_\+\hspace{0.3cm}{\ttfamily [private]}}
+
+\Hypertarget{classMotionPlanningNode_a6f18770b1a6c3feb82ea8465707845c6}\label{classMotionPlanningNode_a6f18770b1a6c3feb82ea8465707845c6} 
+\index{MotionPlanningNode@{MotionPlanningNode}!arm\_T\_@{arm\_T\_}}
+\index{arm\_T\_@{arm\_T\_}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{arm\_T\_}{arm\_T\_}}
+{\footnotesize\ttfamily double Motion\+Planning\+Node\+::arm\+\_\+\+T\+\_\+\hspace{0.3cm}{\ttfamily [private]}}
+
+\Hypertarget{classMotionPlanningNode_af6c2b797565235f4ae6b2461428c7596}\label{classMotionPlanningNode_af6c2b797565235f4ae6b2461428c7596} 
+\index{MotionPlanningNode@{MotionPlanningNode}!cmd\_topic\_@{cmd\_topic\_}}
+\index{cmd\_topic\_@{cmd\_topic\_}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{cmd\_topic\_}{cmd\_topic\_}}
+{\footnotesize\ttfamily std\+::string Motion\+Planning\+Node\+::cmd\+\_\+topic\+\_\+\hspace{0.3cm}{\ttfamily [private]}}
+
+\Hypertarget{classMotionPlanningNode_a0adf711f68bfce84afe0046ba26b3fd1}\label{classMotionPlanningNode_a0adf711f68bfce84afe0046ba26b3fd1} 
+\index{MotionPlanningNode@{MotionPlanningNode}!executing\_@{executing\_}}
+\index{executing\_@{executing\_}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{executing\_}{executing\_}}
+{\footnotesize\ttfamily bool Motion\+Planning\+Node\+::executing\+\_\+\hspace{0.3cm}{\ttfamily [private]}}
+
+\Hypertarget{classMotionPlanningNode_af828b21715769f1e6b12f4e4f5858759}\label{classMotionPlanningNode_af828b21715769f1e6b12f4e4f5858759} 
+\index{MotionPlanningNode@{MotionPlanningNode}!hand0\_@{hand0\_}}
+\index{hand0\_@{hand0\_}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{hand0\_}{hand0\_}}
+{\footnotesize\ttfamily std\+::vector$<$double$>$ Motion\+Planning\+Node\+::hand0\+\_\+\hspace{0.3cm}{\ttfamily [private]}}
+
+\Hypertarget{classMotionPlanningNode_a66e93e59611c08a02177dad23060d2f5}\label{classMotionPlanningNode_a66e93e59611c08a02177dad23060d2f5} 
+\index{MotionPlanningNode@{MotionPlanningNode}!hand\_@{hand\_}}
+\index{hand\_@{hand\_}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{hand\_}{hand\_}}
+{\footnotesize\ttfamily std\+::vector$<$double$>$ Motion\+Planning\+Node\+::hand\+\_\+\hspace{0.3cm}{\ttfamily [private]}}
+
+\Hypertarget{classMotionPlanningNode_a5e648eb83c797597ea8fdd0db3103bc9}\label{classMotionPlanningNode_a5e648eb83c797597ea8fdd0db3103bc9} 
+\index{MotionPlanningNode@{MotionPlanningNode}!hand\_max\_@{hand\_max\_}}
+\index{hand\_max\_@{hand\_max\_}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{hand\_max\_}{hand\_max\_}}
+{\footnotesize\ttfamily double Motion\+Planning\+Node\+::hand\+\_\+max\+\_\+\hspace{0.3cm}{\ttfamily [private]}}
+
+\Hypertarget{classMotionPlanningNode_ac340f7d9f3485da56e0c394fca0955de}\label{classMotionPlanningNode_ac340f7d9f3485da56e0c394fca0955de} 
+\index{MotionPlanningNode@{MotionPlanningNode}!hand\_min\_@{hand\_min\_}}
+\index{hand\_min\_@{hand\_min\_}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{hand\_min\_}{hand\_min\_}}
+{\footnotesize\ttfamily double Motion\+Planning\+Node\+::hand\+\_\+min\+\_\+\hspace{0.3cm}{\ttfamily [private]}}
+
+\Hypertarget{classMotionPlanningNode_aa22d5630cdf467920d788d31397f8183}\label{classMotionPlanningNode_aa22d5630cdf467920d788d31397f8183} 
+\index{MotionPlanningNode@{MotionPlanningNode}!hand\_T\_@{hand\_T\_}}
+\index{hand\_T\_@{hand\_T\_}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{hand\_T\_}{hand\_T\_}}
+{\footnotesize\ttfamily double Motion\+Planning\+Node\+::hand\+\_\+\+T\+\_\+\hspace{0.3cm}{\ttfamily [private]}}
+
+\Hypertarget{classMotionPlanningNode_a369e0d9125b06b6373071fed4a3b27cf}\label{classMotionPlanningNode_a369e0d9125b06b6373071fed4a3b27cf} 
+\index{MotionPlanningNode@{MotionPlanningNode}!handf\_@{handf\_}}
+\index{handf\_@{handf\_}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{handf\_}{handf\_}}
+{\footnotesize\ttfamily std\+::vector$<$double$>$ Motion\+Planning\+Node\+::handf\+\_\+\hspace{0.3cm}{\ttfamily [private]}}
+
+\Hypertarget{classMotionPlanningNode_aa386ee9c3b9a7bfbf47e5014ae68b953}\label{classMotionPlanningNode_aa386ee9c3b9a7bfbf47e5014ae68b953} 
+\index{MotionPlanningNode@{MotionPlanningNode}!have\_js\_@{have\_js\_}}
+\index{have\_js\_@{have\_js\_}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{have\_js\_}{have\_js\_}}
+{\footnotesize\ttfamily bool Motion\+Planning\+Node\+::have\+\_\+js\+\_\+\hspace{0.3cm}{\ttfamily [private]}}
+
+\Hypertarget{classMotionPlanningNode_af145048f29b365dde8d7f67a5798ae23}\label{classMotionPlanningNode_af145048f29b365dde8d7f67a5798ae23} 
+\index{MotionPlanningNode@{MotionPlanningNode}!have\_map\_@{have\_map\_}}
+\index{have\_map\_@{have\_map\_}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{have\_map\_}{have\_map\_}}
+{\footnotesize\ttfamily bool Motion\+Planning\+Node\+::have\+\_\+map\+\_\+\hspace{0.3cm}{\ttfamily [private]}}
+
+\Hypertarget{classMotionPlanningNode_ac60cd21190339b67b1f6684eaee91a5d}\label{classMotionPlanningNode_ac60cd21190339b67b1f6684eaee91a5d} 
+\index{MotionPlanningNode@{MotionPlanningNode}!hold\_last\_command\_@{hold\_last\_command\_}}
+\index{hold\_last\_command\_@{hold\_last\_command\_}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{hold\_last\_command\_}{hold\_last\_command\_}}
+{\footnotesize\ttfamily bool Motion\+Planning\+Node\+::hold\+\_\+last\+\_\+command\+\_\+\hspace{0.3cm}{\ttfamily [private]}}
+
+\Hypertarget{classMotionPlanningNode_a2f64bba01cf0409b296c2e49af840612}\label{classMotionPlanningNode_a2f64bba01cf0409b296c2e49af840612} 
+\index{MotionPlanningNode@{MotionPlanningNode}!hold\_rate\_hz\_@{hold\_rate\_hz\_}}
+\index{hold\_rate\_hz\_@{hold\_rate\_hz\_}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{hold\_rate\_hz\_}{hold\_rate\_hz\_}}
+{\footnotesize\ttfamily double Motion\+Planning\+Node\+::hold\+\_\+rate\+\_\+hz\+\_\+\hspace{0.3cm}{\ttfamily [private]}}
+
+\Hypertarget{classMotionPlanningNode_a2b4cbf2e9858ae5f66fa680b697fd258}\label{classMotionPlanningNode_a2b4cbf2e9858ae5f66fa680b697fd258} 
+\index{MotionPlanningNode@{MotionPlanningNode}!idx\_arm\_@{idx\_arm\_}}
+\index{idx\_arm\_@{idx\_arm\_}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{idx\_arm\_}{idx\_arm\_}}
+{\footnotesize\ttfamily std\+::vector$<$int$>$ Motion\+Planning\+Node\+::idx\+\_\+arm\+\_\+\hspace{0.3cm}{\ttfamily [private]}}
+
+\Hypertarget{classMotionPlanningNode_a11d9157847ed51a2aa51671e0c7040c1}\label{classMotionPlanningNode_a11d9157847ed51a2aa51671e0c7040c1} 
+\index{MotionPlanningNode@{MotionPlanningNode}!idx\_hand\_@{idx\_hand\_}}
+\index{idx\_hand\_@{idx\_hand\_}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{idx\_hand\_}{idx\_hand\_}}
+{\footnotesize\ttfamily std\+::vector$<$int$>$ Motion\+Planning\+Node\+::idx\+\_\+hand\+\_\+\hspace{0.3cm}{\ttfamily [private]}}
+
+\Hypertarget{classMotionPlanningNode_ad70c876e37f60c27094bc314939f279c}\label{classMotionPlanningNode_ad70c876e37f60c27094bc314939f279c} 
+\index{MotionPlanningNode@{MotionPlanningNode}!js\_topic\_@{js\_topic\_}}
+\index{js\_topic\_@{js\_topic\_}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{js\_topic\_}{js\_topic\_}}
+{\footnotesize\ttfamily std\+::string Motion\+Planning\+Node\+::js\+\_\+topic\+\_\+\hspace{0.3cm}{\ttfamily [private]}}
+
+\Hypertarget{classMotionPlanningNode_a82b24fb3521c7bf3845d6285f1c50836}\label{classMotionPlanningNode_a82b24fb3521c7bf3845d6285f1c50836} 
+\index{MotionPlanningNode@{MotionPlanningNode}!last\_cmd\_@{last\_cmd\_}}
+\index{last\_cmd\_@{last\_cmd\_}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{last\_cmd\_}{last\_cmd\_}}
+{\footnotesize\ttfamily std\+::vector$<$double$>$ Motion\+Planning\+Node\+::last\+\_\+cmd\+\_\+\hspace{0.3cm}{\ttfamily [private]}}
+
+\Hypertarget{classMotionPlanningNode_a42be5002271012e400a6714c2171be84}\label{classMotionPlanningNode_a42be5002271012e400a6714c2171be84} 
+\index{MotionPlanningNode@{MotionPlanningNode}!last\_cmd\_valid\_@{last\_cmd\_valid\_}}
+\index{last\_cmd\_valid\_@{last\_cmd\_valid\_}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{last\_cmd\_valid\_}{last\_cmd\_valid\_}}
+{\footnotesize\ttfamily bool Motion\+Planning\+Node\+::last\+\_\+cmd\+\_\+valid\+\_\+\hspace{0.3cm}{\ttfamily [private]}}
+
+\Hypertarget{classMotionPlanningNode_a45051a4089f5ad22cc509b3d89f3247a}\label{classMotionPlanningNode_a45051a4089f5ad22cc509b3d89f3247a} 
+\index{MotionPlanningNode@{MotionPlanningNode}!mtx\_@{mtx\_}}
+\index{mtx\_@{mtx\_}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{mtx\_}{mtx\_}}
+{\footnotesize\ttfamily std\+::mutex Motion\+Planning\+Node\+::mtx\+\_\+\hspace{0.3cm}{\ttfamily [private]}}
+
+\Hypertarget{classMotionPlanningNode_a00054067697a9c2107a20c3d92fe0b70}\label{classMotionPlanningNode_a00054067697a9c2107a20c3d92fe0b70} 
+\index{MotionPlanningNode@{MotionPlanningNode}!pub\_ack\_@{pub\_ack\_}}
+\index{pub\_ack\_@{pub\_ack\_}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{pub\_ack\_}{pub\_ack\_}}
+{\footnotesize\ttfamily ros\+::\+Publisher Motion\+Planning\+Node\+::pub\+\_\+ack\+\_\+\hspace{0.3cm}{\ttfamily [private]}}
+
+\Hypertarget{classMotionPlanningNode_a7694db0a4f94f05e21c21637de7ce5f1}\label{classMotionPlanningNode_a7694db0a4f94f05e21c21637de7ce5f1} 
+\index{MotionPlanningNode@{MotionPlanningNode}!pub\_cmd\_@{pub\_cmd\_}}
+\index{pub\_cmd\_@{pub\_cmd\_}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{pub\_cmd\_}{pub\_cmd\_}}
+{\footnotesize\ttfamily ros\+::\+Publisher Motion\+Planning\+Node\+::pub\+\_\+cmd\+\_\+\hspace{0.3cm}{\ttfamily [private]}}
+
+\Hypertarget{classMotionPlanningNode_a72379cfae15ac1407ad270f9fca1f110}\label{classMotionPlanningNode_a72379cfae15ac1407ad270f9fca1f110} 
+\index{MotionPlanningNode@{MotionPlanningNode}!q0\_@{q0\_}}
+\index{q0\_@{q0\_}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{q0\_}{q0\_}}
+{\footnotesize\ttfamily std\+::vector$<$double$>$ Motion\+Planning\+Node\+::q0\+\_\+\hspace{0.3cm}{\ttfamily [private]}}
+
+\Hypertarget{classMotionPlanningNode_aa576a6977741fdce03fae92403b6231e}\label{classMotionPlanningNode_aa576a6977741fdce03fae92403b6231e} 
+\index{MotionPlanningNode@{MotionPlanningNode}!q\_@{q\_}}
+\index{q\_@{q\_}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{q\_}{q\_}}
+{\footnotesize\ttfamily std\+::vector$<$double$>$ Motion\+Planning\+Node\+::q\+\_\+\hspace{0.3cm}{\ttfamily [private]}}
+
+\Hypertarget{classMotionPlanningNode_a7d20ebd1b92f7ed321d12663d363afe5}\label{classMotionPlanningNode_a7d20ebd1b92f7ed321d12663d363afe5} 
+\index{MotionPlanningNode@{MotionPlanningNode}!qf\_@{qf\_}}
+\index{qf\_@{qf\_}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{qf\_}{qf\_}}
+{\footnotesize\ttfamily std\+::vector$<$double$>$ Motion\+Planning\+Node\+::qf\+\_\+\hspace{0.3cm}{\ttfamily [private]}}
+
+\Hypertarget{classMotionPlanningNode_a8f015bfd83cd4540ef1b6379c82f87e5}\label{classMotionPlanningNode_a8f015bfd83cd4540ef1b6379c82f87e5} 
+\index{MotionPlanningNode@{MotionPlanningNode}!sub\_js\_@{sub\_js\_}}
+\index{sub\_js\_@{sub\_js\_}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{sub\_js\_}{sub\_js\_}}
+{\footnotesize\ttfamily ros\+::\+Subscriber Motion\+Planning\+Node\+::sub\+\_\+js\+\_\+\hspace{0.3cm}{\ttfamily [private]}}
+
+\Hypertarget{classMotionPlanningNode_aad56f179c13857cc04018ce391401c62}\label{classMotionPlanningNode_aad56f179c13857cc04018ce391401c62} 
+\index{MotionPlanningNode@{MotionPlanningNode}!sub\_target\_@{sub\_target\_}}
+\index{sub\_target\_@{sub\_target\_}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{sub\_target\_}{sub\_target\_}}
+{\footnotesize\ttfamily ros\+::\+Subscriber Motion\+Planning\+Node\+::sub\+\_\+target\+\_\+\hspace{0.3cm}{\ttfamily [private]}}
+
+\Hypertarget{classMotionPlanningNode_ae2a45b8098f4259a152464068307995c}\label{classMotionPlanningNode_ae2a45b8098f4259a152464068307995c} 
+\index{MotionPlanningNode@{MotionPlanningNode}!t\_start\_@{t\_start\_}}
+\index{t\_start\_@{t\_start\_}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{t\_start\_}{t\_start\_}}
+{\footnotesize\ttfamily ros\+::\+Time Motion\+Planning\+Node\+::t\+\_\+start\+\_\+\hspace{0.3cm}{\ttfamily [private]}}
+
+\Hypertarget{classMotionPlanningNode_ac970c37842ad0ba4543a946766d68c1b}\label{classMotionPlanningNode_ac970c37842ad0ba4543a946766d68c1b} 
+\index{MotionPlanningNode@{MotionPlanningNode}!target\_topic\_@{target\_topic\_}}
+\index{target\_topic\_@{target\_topic\_}!MotionPlanningNode@{MotionPlanningNode}}
+\doxysubsubsection{\texorpdfstring{target\_topic\_}{target\_topic\_}}
+{\footnotesize\ttfamily std\+::string Motion\+Planning\+Node\+::target\+\_\+topic\+\_\+\hspace{0.3cm}{\ttfamily [private]}}
+
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+/home/giuntinux/trento\+\_\+lab\+\_\+home/ros\+\_\+ws/src/lab\+\_\+myproject/motion\+\_\+planning\+\_\+pkg/\mbox{\hyperlink{motion__planning__node_8cpp}{motion\+\_\+planning\+\_\+node.\+cpp}}\end{DoxyCompactItemize}

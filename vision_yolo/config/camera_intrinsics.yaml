@@ -1,0 +1,7 @@
+camera_matrix:
+  rows: 3
+  cols: 3
+  data: [640, 0, 960,
+         0, 640, 540,
+         0,   0,   1]
+

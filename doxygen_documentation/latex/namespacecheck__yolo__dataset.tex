@@ -1,0 +1,120 @@
+\doxysection{check\+\_\+yolo\+\_\+dataset Namespace Reference}
+\hypertarget{namespacecheck__yolo__dataset}{}\label{namespacecheck__yolo__dataset}\index{check\_yolo\_dataset@{check\_yolo\_dataset}}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{namespacecheck__yolo__dataset_a681f4b7f4d4c7f66b202f90ef234837d}{load\+\_\+classes}} (data\+\_\+yaml)
+\item 
+\mbox{\hyperlink{namespacecheck__yolo__dataset_a602577485cf97dcd3d0d74e25797f367}{yolo\+\_\+to\+\_\+pixel}} (cx, cy, w, h, img\+\_\+w, img\+\_\+h)
+\item 
+\mbox{\hyperlink{namespacecheck__yolo__dataset_a8c0329078bc0de9d0d38e541accfb2ca}{collect\+\_\+images\+\_\+recursive}} (img\+\_\+root)
+\item 
+\mbox{\hyperlink{namespacecheck__yolo__dataset_aad385e87d6f4ef1dc90664fabd8f73be}{main}} (\mbox{\hyperlink{namespacecheck__yolo__dataset_a081db26a5d70ed3d41bb16cdc199a4ce}{args}})
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+tuple \mbox{\hyperlink{namespacecheck__yolo__dataset_a247a506583a05bc6ca7a5bd7a08ad510}{IMG\+\_\+\+EXTS}} = ("{}.jpg"{}, "{}.jpeg"{}, "{}.png"{}, "{}.bmp"{})
+\item 
+\mbox{\hyperlink{namespacecheck__yolo__dataset_ab1dd9ff12fdd2bcc7256c51837d042ce}{ap}} = argparse.\+Argument\+Parser()
+\item 
+\mbox{\hyperlink{namespacecheck__yolo__dataset_a486ee4239b7ba843d6a5d93730dc64db}{default}}
+\item 
+\mbox{\hyperlink{namespacecheck__yolo__dataset_a66d54bd603bea5918c172ee2c06fec52}{help}}
+\item 
+\mbox{\hyperlink{namespacecheck__yolo__dataset_a944ba78beb706b6851aa10008f2e30a8}{choices}}
+\item 
+\mbox{\hyperlink{namespacecheck__yolo__dataset_a242909e9606129e22bdd49e939f9440e}{type}}
+\item 
+\mbox{\hyperlink{namespacecheck__yolo__dataset_a7e1dd5790412c910f050ee09851fa003}{int}}
+\item 
+\mbox{\hyperlink{namespacecheck__yolo__dataset_a081db26a5d70ed3d41bb16cdc199a4ce}{args}} = ap.\+parse\+\_\+args()
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\begin{DoxyVerb}check_yolo_dataset_recursive.py
+
+Versione aggiornata dello script di verifica che:
+- scansiona ricorsivamente images/<split>/...
+- per ogni immagine trova labels/<split>/stesso/rel/path/file.txt
+- disegna le bbox e salva output preservando la gerarchia relativa in output/
+\end{DoxyVerb}
+ 
+
+\doxysubsection{Function Documentation}
+\Hypertarget{namespacecheck__yolo__dataset_a8c0329078bc0de9d0d38e541accfb2ca}\label{namespacecheck__yolo__dataset_a8c0329078bc0de9d0d38e541accfb2ca} 
+\index{check\_yolo\_dataset@{check\_yolo\_dataset}!collect\_images\_recursive@{collect\_images\_recursive}}
+\index{collect\_images\_recursive@{collect\_images\_recursive}!check\_yolo\_dataset@{check\_yolo\_dataset}}
+\doxysubsubsection{\texorpdfstring{collect\_images\_recursive()}{collect\_images\_recursive()}}
+{\footnotesize\ttfamily check\+\_\+yolo\+\_\+dataset.\+collect\+\_\+images\+\_\+recursive (\begin{DoxyParamCaption}\item[{}]{img\+\_\+root }\end{DoxyParamCaption})}
+
+\Hypertarget{namespacecheck__yolo__dataset_a681f4b7f4d4c7f66b202f90ef234837d}\label{namespacecheck__yolo__dataset_a681f4b7f4d4c7f66b202f90ef234837d} 
+\index{check\_yolo\_dataset@{check\_yolo\_dataset}!load\_classes@{load\_classes}}
+\index{load\_classes@{load\_classes}!check\_yolo\_dataset@{check\_yolo\_dataset}}
+\doxysubsubsection{\texorpdfstring{load\_classes()}{load\_classes()}}
+{\footnotesize\ttfamily check\+\_\+yolo\+\_\+dataset.\+load\+\_\+classes (\begin{DoxyParamCaption}\item[{}]{data\+\_\+yaml }\end{DoxyParamCaption})}
+
+\Hypertarget{namespacecheck__yolo__dataset_aad385e87d6f4ef1dc90664fabd8f73be}\label{namespacecheck__yolo__dataset_aad385e87d6f4ef1dc90664fabd8f73be} 
+\index{check\_yolo\_dataset@{check\_yolo\_dataset}!main@{main}}
+\index{main@{main}!check\_yolo\_dataset@{check\_yolo\_dataset}}
+\doxysubsubsection{\texorpdfstring{main()}{main()}}
+{\footnotesize\ttfamily check\+\_\+yolo\+\_\+dataset.\+main (\begin{DoxyParamCaption}\item[{}]{args }\end{DoxyParamCaption})}
+
+\Hypertarget{namespacecheck__yolo__dataset_a602577485cf97dcd3d0d74e25797f367}\label{namespacecheck__yolo__dataset_a602577485cf97dcd3d0d74e25797f367} 
+\index{check\_yolo\_dataset@{check\_yolo\_dataset}!yolo\_to\_pixel@{yolo\_to\_pixel}}
+\index{yolo\_to\_pixel@{yolo\_to\_pixel}!check\_yolo\_dataset@{check\_yolo\_dataset}}
+\doxysubsubsection{\texorpdfstring{yolo\_to\_pixel()}{yolo\_to\_pixel()}}
+{\footnotesize\ttfamily check\+\_\+yolo\+\_\+dataset.\+yolo\+\_\+to\+\_\+pixel (\begin{DoxyParamCaption}\item[{}]{cx,  }\item[{}]{cy,  }\item[{}]{w,  }\item[{}]{h,  }\item[{}]{img\+\_\+w,  }\item[{}]{img\+\_\+h }\end{DoxyParamCaption})}
+
+
+
+\doxysubsection{Variable Documentation}
+\Hypertarget{namespacecheck__yolo__dataset_ab1dd9ff12fdd2bcc7256c51837d042ce}\label{namespacecheck__yolo__dataset_ab1dd9ff12fdd2bcc7256c51837d042ce} 
+\index{check\_yolo\_dataset@{check\_yolo\_dataset}!ap@{ap}}
+\index{ap@{ap}!check\_yolo\_dataset@{check\_yolo\_dataset}}
+\doxysubsubsection{\texorpdfstring{ap}{ap}}
+{\footnotesize\ttfamily check\+\_\+yolo\+\_\+dataset.\+ap = argparse.\+Argument\+Parser()}
+
+\Hypertarget{namespacecheck__yolo__dataset_a081db26a5d70ed3d41bb16cdc199a4ce}\label{namespacecheck__yolo__dataset_a081db26a5d70ed3d41bb16cdc199a4ce} 
+\index{check\_yolo\_dataset@{check\_yolo\_dataset}!args@{args}}
+\index{args@{args}!check\_yolo\_dataset@{check\_yolo\_dataset}}
+\doxysubsubsection{\texorpdfstring{args}{args}}
+{\footnotesize\ttfamily check\+\_\+yolo\+\_\+dataset.\+args = ap.\+parse\+\_\+args()}
+
+\Hypertarget{namespacecheck__yolo__dataset_a944ba78beb706b6851aa10008f2e30a8}\label{namespacecheck__yolo__dataset_a944ba78beb706b6851aa10008f2e30a8} 
+\index{check\_yolo\_dataset@{check\_yolo\_dataset}!choices@{choices}}
+\index{choices@{choices}!check\_yolo\_dataset@{check\_yolo\_dataset}}
+\doxysubsubsection{\texorpdfstring{choices}{choices}}
+{\footnotesize\ttfamily check\+\_\+yolo\+\_\+dataset.\+choices}
+
+\Hypertarget{namespacecheck__yolo__dataset_a486ee4239b7ba843d6a5d93730dc64db}\label{namespacecheck__yolo__dataset_a486ee4239b7ba843d6a5d93730dc64db} 
+\index{check\_yolo\_dataset@{check\_yolo\_dataset}!default@{default}}
+\index{default@{default}!check\_yolo\_dataset@{check\_yolo\_dataset}}
+\doxysubsubsection{\texorpdfstring{default}{default}}
+{\footnotesize\ttfamily check\+\_\+yolo\+\_\+dataset.\+default}
+
+\Hypertarget{namespacecheck__yolo__dataset_a66d54bd603bea5918c172ee2c06fec52}\label{namespacecheck__yolo__dataset_a66d54bd603bea5918c172ee2c06fec52} 
+\index{check\_yolo\_dataset@{check\_yolo\_dataset}!help@{help}}
+\index{help@{help}!check\_yolo\_dataset@{check\_yolo\_dataset}}
+\doxysubsubsection{\texorpdfstring{help}{help}}
+{\footnotesize\ttfamily check\+\_\+yolo\+\_\+dataset.\+help}
+
+\Hypertarget{namespacecheck__yolo__dataset_a247a506583a05bc6ca7a5bd7a08ad510}\label{namespacecheck__yolo__dataset_a247a506583a05bc6ca7a5bd7a08ad510} 
+\index{check\_yolo\_dataset@{check\_yolo\_dataset}!IMG\_EXTS@{IMG\_EXTS}}
+\index{IMG\_EXTS@{IMG\_EXTS}!check\_yolo\_dataset@{check\_yolo\_dataset}}
+\doxysubsubsection{\texorpdfstring{IMG\_EXTS}{IMG\_EXTS}}
+{\footnotesize\ttfamily tuple check\+\_\+yolo\+\_\+dataset.\+IMG\+\_\+\+EXTS = ("{}.jpg"{}, "{}.jpeg"{}, "{}.png"{}, "{}.bmp"{})}
+
+\Hypertarget{namespacecheck__yolo__dataset_a7e1dd5790412c910f050ee09851fa003}\label{namespacecheck__yolo__dataset_a7e1dd5790412c910f050ee09851fa003} 
+\index{check\_yolo\_dataset@{check\_yolo\_dataset}!int@{int}}
+\index{int@{int}!check\_yolo\_dataset@{check\_yolo\_dataset}}
+\doxysubsubsection{\texorpdfstring{int}{int}}
+{\footnotesize\ttfamily check\+\_\+yolo\+\_\+dataset.\+int}
+
+\Hypertarget{namespacecheck__yolo__dataset_a242909e9606129e22bdd49e939f9440e}\label{namespacecheck__yolo__dataset_a242909e9606129e22bdd49e939f9440e} 
+\index{check\_yolo\_dataset@{check\_yolo\_dataset}!type@{type}}
+\index{type@{type}!check\_yolo\_dataset@{check\_yolo\_dataset}}
+\doxysubsubsection{\texorpdfstring{type}{type}}
+{\footnotesize\ttfamily check\+\_\+yolo\+\_\+dataset.\+type}
+

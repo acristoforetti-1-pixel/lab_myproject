@@ -1,0 +1,80 @@
+\doxysection{/home/giuntinux/trento\+\_\+lab\+\_\+home/ros\+\_\+ws/src/lab\+\_\+myproject/task\+\_\+planning\+\_\+pkg/task\+\_\+planning\+\_\+node.cpp File Reference}
+\hypertarget{task__planning__node_8cpp}{}\label{task__planning__node_8cpp}\index{/home/giuntinux/trento\_lab\_home/ros\_ws/src/lab\_myproject/task\_planning\_pkg/task\_planning\_node.cpp@{/home/giuntinux/trento\_lab\_home/ros\_ws/src/lab\_myproject/task\_planning\_pkg/task\_planning\_node.cpp}}
+
+
+Task-\/level pick-\/and-\/place planning with inverse kinematics.  
+
+
+{\ttfamily \#include $<$ros/ros.\+h$>$}\newline
+{\ttfamily \#include $<$ros/package.\+h$>$}\newline
+{\ttfamily \#include $<$yaml-\/cpp/yaml.\+h$>$}\newline
+{\ttfamily \#include $<$sensor\+\_\+msgs/\+Joint\+State.\+h$>$}\newline
+{\ttfamily \#include $<$geometry\+\_\+msgs/\+Pose\+Stamped.\+h$>$}\newline
+{\ttfamily \#include $<$std\+\_\+msgs/\+Float64\+Multi\+Array.\+h$>$}\newline
+{\ttfamily \#include $<$std\+\_\+msgs/\+Bool.\+h$>$}\newline
+{\ttfamily \#include $<$std\+\_\+msgs/\+String.\+h$>$}\newline
+{\ttfamily \#include $<$tf2/\+Linear\+Math/\+Quaternion.\+h$>$}\newline
+{\ttfamily \#include $<$tf2/\+Linear\+Math/\+Matrix3x3.\+h$>$}\newline
+{\ttfamily \#include $<$tf2\+\_\+geometry\+\_\+msgs/tf2\+\_\+geometry\+\_\+msgs.\+h$>$}\newline
+{\ttfamily \#include $<$kdl/tree.\+hpp$>$}\newline
+{\ttfamily \#include $<$kdl/chain.\+hpp$>$}\newline
+{\ttfamily \#include $<$kdl\+\_\+parser/kdl\+\_\+parser.\+hpp$>$}\newline
+{\ttfamily \#include $<$kdl/chainfksolverpos\+\_\+recursive.\+hpp$>$}\newline
+{\ttfamily \#include $<$kdl/chainiksolvervel\+\_\+pinv.\+hpp$>$}\newline
+{\ttfamily \#include $<$kdl/chainiksolverpos\+\_\+nr.\+hpp$>$}\newline
+{\ttfamily \#include $<$kdl/chainiksolverpos\+\_\+nr\+\_\+jl.\+hpp$>$}\newline
+{\ttfamily \#include $<$regex$>$}\newline
+{\ttfamily \#include $<$map$>$}\newline
+{\ttfamily \#include $<$mutex$>$}\newline
+{\ttfamily \#include $<$vector$>$}\newline
+{\ttfamily \#include $<$string$>$}\newline
+{\ttfamily \#include $<$algorithm$>$}\newline
+{\ttfamily \#include $<$cmath$>$}\newline
+{\ttfamily \#include $<$memory$>$}\newline
+{\ttfamily \#include $<$array$>$}\newline
+Include dependency graph for task\+\_\+planning\+\_\+node.\+cpp\+:\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{task__planning__node_8cpp__incl}
+\end{center}
+\end{figure}
+\doxysubsubsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+class \mbox{\hyperlink{classPickPlaceIK}{Pick\+Place\+IK}}
+\begin{DoxyCompactList}\small\item\em Provides task-\/level pick-\/and-\/place motion planning using KDL IK. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+int \mbox{\hyperlink{task__planning__node_8cpp_a3c04138a5bfe5d72780bb7e82a18e627}{main}} (int argc, char \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}argv)
+\begin{DoxyCompactList}\small\item\em Main entry point for task\+\_\+planning\+\_\+node. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Task-\/level pick-\/and-\/place planning with inverse kinematics. 
+
+This ROS node implements a complete pick-\/and-\/place pipeline for a UR5 robotic arm. It receives object poses from the perception system, computes feasible grasp configurations using inverse kinematics, and generates a sequence of joint-\/space targets to execute grasp, transport, and placement motions.
+
+The node performs decision making at task level, including\+:
+\begin{DoxyItemize}
+\item Grasp orientation selection
+\item Singularity and joint-\/jump avoidance
+\item Class-\/dependent placement strategy
+\item Motion synchronization via acknowledgements
+\end{DoxyItemize}
+
+Inverse kinematics is solved using the KDL library, while trajectory execution is delegated to a dedicated motion execution node. 
+
+\doxysubsection{Function Documentation}
+\Hypertarget{task__planning__node_8cpp_a3c04138a5bfe5d72780bb7e82a18e627}\label{task__planning__node_8cpp_a3c04138a5bfe5d72780bb7e82a18e627} 
+\index{task\_planning\_node.cpp@{task\_planning\_node.cpp}!main@{main}}
+\index{main@{main}!task\_planning\_node.cpp@{task\_planning\_node.cpp}}
+\doxysubsubsection{\texorpdfstring{main()}{main()}}
+{\footnotesize\ttfamily int main (\begin{DoxyParamCaption}\item[{int}]{argc,  }\item[{char \texorpdfstring{$\ast$}{*}\texorpdfstring{$\ast$}{*}}]{argv }\end{DoxyParamCaption})}
+
+
+
+Main entry point for task\+\_\+planning\+\_\+node. 
+
+Initializes ROS, creates \doxylink{classPickPlaceIK}{Pick\+Place\+IK} instance, and starts spinning. 

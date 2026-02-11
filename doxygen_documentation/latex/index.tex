@@ -1,0 +1,36 @@
+\chapter{Lab My\+Project -\/ UR5 Pick \& Place}
+\hypertarget{index}{}\label{index}\index{Lab MyProject -\/ UR5 Pick \& Place@{Lab MyProject -\/ UR5 Pick \& Place}}
+\label{index_md_mainpage}%
+\Hypertarget{index_md_mainpage}%
+ Welcome to the documentation for {\bfseries{Lab My\+Project}}, a ROS-\/based pick-\/and-\/place system using a {\bfseries{UR5 6-\/DoF robotic arm}} with a soft two-\/finger gripper.
+
+\DoxyHorRuler{0}
+\hypertarget{index_autotoc_md2}{}\doxysection{\texorpdfstring{Project Overview}{Project Overview}}\label{index_autotoc_md2}
+This project demonstrates autonomous pick-\/and-\/place operations in a controlled workspace\+:
+
+
+\begin{DoxyItemize}
+\item Objects (e.\+g., mega-\/blocks) are placed in random positions on an {\bfseries{initial stand}}.
+\item The {\bfseries{UR5 manipulator}} picks each object in sequence and places it on a {\bfseries{final stand}} according to a specified order.
+\item Objects can belong to different classes, with known geometries stored as STL files.
+\item A calibrated 3D sensor detects object positions and orientations on the initial stand.
+\end{DoxyItemize}
+
+The system uses {\bfseries{ROS}}, {\bfseries{Gazebo simulation}}, and {\bfseries{YOLO-\/based perception}} to perform planning and motion execution.
+
+\DoxyHorRuler{0}
+\hypertarget{index_autotoc_md4}{}\doxysection{\texorpdfstring{Robot}{Robot}}\label{index_autotoc_md4}
+
+\begin{DoxyItemize}
+\item {\bfseries{Manipulator\+:}} UR5 arm (6 Do\+Fs)
+\item {\bfseries{End-\/effector\+:}} Soft two-\/fingered gripper
+\item {\bfseries{Wrist\+:}} Spherical
+\end{DoxyItemize}
+
+\DoxyHorRuler{0}
+\hypertarget{index_autotoc_md6}{}\doxysection{\texorpdfstring{Simulation}{Simulation}}\label{index_autotoc_md6}
+
+\begin{DoxyItemize}
+\item Physics simulation is performed using {\bfseries{Gazebo}}.
+\item Objects can be spawned randomly in the simulation for testing. 
+\end{DoxyItemize}

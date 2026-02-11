@@ -1,0 +1,110 @@
+\doxysection{convert\+\_\+dataset\+\_\+to\+\_\+yolo Namespace Reference}
+\hypertarget{namespaceconvert__dataset__to__yolo}{}\label{namespaceconvert__dataset__to__yolo}\index{convert\_dataset\_to\_yolo@{convert\_dataset\_to\_yolo}}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{namespaceconvert__dataset__to__yolo_a6c9c41c62779c1876d629093f809e553}{bbox\+\_\+from\+\_\+vertices}} (vertices)
+\item 
+\mbox{\hyperlink{namespaceconvert__dataset__to__yolo_a87b6526616f04c3a6817aabf120c9111}{normalize\+\_\+bbox}} (bbox, w, h)
+\item 
+\mbox{\hyperlink{namespaceconvert__dataset__to__yolo_a82570a2c92c1be2e6dd0b0b18d067193}{extract\+\_\+class\+\_\+from\+\_\+obj}} (obj)
+\item 
+\mbox{\hyperlink{namespaceconvert__dataset__to__yolo_a6d2fadc0c0f369b2e7526a7eb76dfdc5}{process\+\_\+view}} (json\+\_\+path, img\+\_\+path, label\+\_\+out)
+\item 
+\mbox{\hyperlink{namespaceconvert__dataset__to__yolo_aaa41959af10e0b03820f29b7885fe497}{collect\+\_\+samples}} (input\+\_\+root, split\+\_\+by\+\_\+scene=False)
+\item 
+\mbox{\hyperlink{namespaceconvert__dataset__to__yolo_acbe311dd26da2b23780d1f39ae443c89}{export\+\_\+samples\+\_\+grouped}} (groups, grouped, args)
+\item 
+\mbox{\hyperlink{namespaceconvert__dataset__to__yolo_a35f19bd2e74f43491c43945c13576907}{main}} ()
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+list \mbox{\hyperlink{namespaceconvert__dataset__to__yolo_a8c3b9ac93c288d8f089288410459d374}{CLASS\+\_\+\+NAMES}}
+\item 
+dict \mbox{\hyperlink{namespaceconvert__dataset__to__yolo_ade1f3cf4f27d12e67538d6477bd08ab7}{CLASS\+\_\+\+TO\+\_\+\+ID}} = \{n\+: i for i, n in enumerate(\mbox{\hyperlink{namespaceconvert__dataset__to__yolo_a8c3b9ac93c288d8f089288410459d374}{CLASS\+\_\+\+NAMES}})\}
+\item 
+list \mbox{\hyperlink{namespaceconvert__dataset__to__yolo_aebd999bd8a1a5542676104b080087dbe}{POSSIBLE\+\_\+\+CLASS\+\_\+\+KEYS}} = \mbox{[}\textquotesingle{}label\textquotesingle{}, \textquotesingle{}class\textquotesingle{}, \textquotesingle{}y\textquotesingle{}, \textquotesingle{}name\textquotesingle{}, \textquotesingle{}type\textquotesingle{}\mbox{]}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\begin{DoxyVerb}convert_dataset_to_yolo_fix.py
+
+Versione corretta che preserva la gerarchia relativa (assignX/sceneY)
+nella cartella di output per evitare sovrascritture di file con lo stesso nome.
+\end{DoxyVerb}
+ 
+
+\doxysubsection{Function Documentation}
+\Hypertarget{namespaceconvert__dataset__to__yolo_a6c9c41c62779c1876d629093f809e553}\label{namespaceconvert__dataset__to__yolo_a6c9c41c62779c1876d629093f809e553} 
+\index{convert\_dataset\_to\_yolo@{convert\_dataset\_to\_yolo}!bbox\_from\_vertices@{bbox\_from\_vertices}}
+\index{bbox\_from\_vertices@{bbox\_from\_vertices}!convert\_dataset\_to\_yolo@{convert\_dataset\_to\_yolo}}
+\doxysubsubsection{\texorpdfstring{bbox\_from\_vertices()}{bbox\_from\_vertices()}}
+{\footnotesize\ttfamily convert\+\_\+dataset\+\_\+to\+\_\+yolo.\+bbox\+\_\+from\+\_\+vertices (\begin{DoxyParamCaption}\item[{}]{vertices }\end{DoxyParamCaption})}
+
+\Hypertarget{namespaceconvert__dataset__to__yolo_aaa41959af10e0b03820f29b7885fe497}\label{namespaceconvert__dataset__to__yolo_aaa41959af10e0b03820f29b7885fe497} 
+\index{convert\_dataset\_to\_yolo@{convert\_dataset\_to\_yolo}!collect\_samples@{collect\_samples}}
+\index{collect\_samples@{collect\_samples}!convert\_dataset\_to\_yolo@{convert\_dataset\_to\_yolo}}
+\doxysubsubsection{\texorpdfstring{collect\_samples()}{collect\_samples()}}
+{\footnotesize\ttfamily convert\+\_\+dataset\+\_\+to\+\_\+yolo.\+collect\+\_\+samples (\begin{DoxyParamCaption}\item[{}]{input\+\_\+root,  }\item[{}]{split\+\_\+by\+\_\+scene = {\ttfamily False} }\end{DoxyParamCaption})}
+
+\Hypertarget{namespaceconvert__dataset__to__yolo_acbe311dd26da2b23780d1f39ae443c89}\label{namespaceconvert__dataset__to__yolo_acbe311dd26da2b23780d1f39ae443c89} 
+\index{convert\_dataset\_to\_yolo@{convert\_dataset\_to\_yolo}!export\_samples\_grouped@{export\_samples\_grouped}}
+\index{export\_samples\_grouped@{export\_samples\_grouped}!convert\_dataset\_to\_yolo@{convert\_dataset\_to\_yolo}}
+\doxysubsubsection{\texorpdfstring{export\_samples\_grouped()}{export\_samples\_grouped()}}
+{\footnotesize\ttfamily convert\+\_\+dataset\+\_\+to\+\_\+yolo.\+export\+\_\+samples\+\_\+grouped (\begin{DoxyParamCaption}\item[{}]{groups,  }\item[{}]{grouped,  }\item[{}]{args }\end{DoxyParamCaption})}
+
+\Hypertarget{namespaceconvert__dataset__to__yolo_a82570a2c92c1be2e6dd0b0b18d067193}\label{namespaceconvert__dataset__to__yolo_a82570a2c92c1be2e6dd0b0b18d067193} 
+\index{convert\_dataset\_to\_yolo@{convert\_dataset\_to\_yolo}!extract\_class\_from\_obj@{extract\_class\_from\_obj}}
+\index{extract\_class\_from\_obj@{extract\_class\_from\_obj}!convert\_dataset\_to\_yolo@{convert\_dataset\_to\_yolo}}
+\doxysubsubsection{\texorpdfstring{extract\_class\_from\_obj()}{extract\_class\_from\_obj()}}
+{\footnotesize\ttfamily convert\+\_\+dataset\+\_\+to\+\_\+yolo.\+extract\+\_\+class\+\_\+from\+\_\+obj (\begin{DoxyParamCaption}\item[{}]{obj }\end{DoxyParamCaption})}
+
+\Hypertarget{namespaceconvert__dataset__to__yolo_a35f19bd2e74f43491c43945c13576907}\label{namespaceconvert__dataset__to__yolo_a35f19bd2e74f43491c43945c13576907} 
+\index{convert\_dataset\_to\_yolo@{convert\_dataset\_to\_yolo}!main@{main}}
+\index{main@{main}!convert\_dataset\_to\_yolo@{convert\_dataset\_to\_yolo}}
+\doxysubsubsection{\texorpdfstring{main()}{main()}}
+{\footnotesize\ttfamily convert\+\_\+dataset\+\_\+to\+\_\+yolo.\+main (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})}
+
+\Hypertarget{namespaceconvert__dataset__to__yolo_a87b6526616f04c3a6817aabf120c9111}\label{namespaceconvert__dataset__to__yolo_a87b6526616f04c3a6817aabf120c9111} 
+\index{convert\_dataset\_to\_yolo@{convert\_dataset\_to\_yolo}!normalize\_bbox@{normalize\_bbox}}
+\index{normalize\_bbox@{normalize\_bbox}!convert\_dataset\_to\_yolo@{convert\_dataset\_to\_yolo}}
+\doxysubsubsection{\texorpdfstring{normalize\_bbox()}{normalize\_bbox()}}
+{\footnotesize\ttfamily convert\+\_\+dataset\+\_\+to\+\_\+yolo.\+normalize\+\_\+bbox (\begin{DoxyParamCaption}\item[{}]{bbox,  }\item[{}]{w,  }\item[{}]{h }\end{DoxyParamCaption})}
+
+\Hypertarget{namespaceconvert__dataset__to__yolo_a6d2fadc0c0f369b2e7526a7eb76dfdc5}\label{namespaceconvert__dataset__to__yolo_a6d2fadc0c0f369b2e7526a7eb76dfdc5} 
+\index{convert\_dataset\_to\_yolo@{convert\_dataset\_to\_yolo}!process\_view@{process\_view}}
+\index{process\_view@{process\_view}!convert\_dataset\_to\_yolo@{convert\_dataset\_to\_yolo}}
+\doxysubsubsection{\texorpdfstring{process\_view()}{process\_view()}}
+{\footnotesize\ttfamily convert\+\_\+dataset\+\_\+to\+\_\+yolo.\+process\+\_\+view (\begin{DoxyParamCaption}\item[{}]{json\+\_\+path,  }\item[{}]{img\+\_\+path,  }\item[{}]{label\+\_\+out }\end{DoxyParamCaption})}
+
+
+
+\doxysubsection{Variable Documentation}
+\Hypertarget{namespaceconvert__dataset__to__yolo_a8c3b9ac93c288d8f089288410459d374}\label{namespaceconvert__dataset__to__yolo_a8c3b9ac93c288d8f089288410459d374} 
+\index{convert\_dataset\_to\_yolo@{convert\_dataset\_to\_yolo}!CLASS\_NAMES@{CLASS\_NAMES}}
+\index{CLASS\_NAMES@{CLASS\_NAMES}!convert\_dataset\_to\_yolo@{convert\_dataset\_to\_yolo}}
+\doxysubsubsection{\texorpdfstring{CLASS\_NAMES}{CLASS\_NAMES}}
+{\footnotesize\ttfamily list convert\+\_\+dataset\+\_\+to\+\_\+yolo.\+CLASS\+\_\+\+NAMES}
+
+{\bfseries Initial value\+:}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ =\ \ [}
+\DoxyCodeLine{00002\ \ \ \ \ \textcolor{stringliteral}{"{}X1-\/Y1-\/Z2"{}},\textcolor{stringliteral}{"{}X1-\/Y2-\/Z1"{}},\textcolor{stringliteral}{"{}X1-\/Y2-\/Z2"{}},\textcolor{stringliteral}{"{}X1-\/Y2-\/Z2-\/CHAMFER"{}},\textcolor{stringliteral}{"{}X1-\/Y2-\/Z2-\/TWINFILLET"{}},}
+\DoxyCodeLine{00003\ \ \ \ \ \textcolor{stringliteral}{"{}X1-\/Y3-\/Z2"{}},\textcolor{stringliteral}{"{}X1-\/Y3-\/Z2-\/FILLET"{}},\textcolor{stringliteral}{"{}X1-\/Y4-\/Z1"{}},\textcolor{stringliteral}{"{}X1-\/Y4-\/Z2"{}},\textcolor{stringliteral}{"{}X2-\/Y2-\/Z2"{}},\textcolor{stringliteral}{"{}X2-\/Y2-\/Z2-\/FILLET"{}},}
+\DoxyCodeLine{00004\ ]}
+
+\end{DoxyCode}
+\Hypertarget{namespaceconvert__dataset__to__yolo_ade1f3cf4f27d12e67538d6477bd08ab7}\label{namespaceconvert__dataset__to__yolo_ade1f3cf4f27d12e67538d6477bd08ab7} 
+\index{convert\_dataset\_to\_yolo@{convert\_dataset\_to\_yolo}!CLASS\_TO\_ID@{CLASS\_TO\_ID}}
+\index{CLASS\_TO\_ID@{CLASS\_TO\_ID}!convert\_dataset\_to\_yolo@{convert\_dataset\_to\_yolo}}
+\doxysubsubsection{\texorpdfstring{CLASS\_TO\_ID}{CLASS\_TO\_ID}}
+{\footnotesize\ttfamily dict convert\+\_\+dataset\+\_\+to\+\_\+yolo.\+CLASS\+\_\+\+TO\+\_\+\+ID = \{n\+: i for i, n in enumerate(\mbox{\hyperlink{namespaceconvert__dataset__to__yolo_a8c3b9ac93c288d8f089288410459d374}{CLASS\+\_\+\+NAMES}})\}}
+
+\Hypertarget{namespaceconvert__dataset__to__yolo_aebd999bd8a1a5542676104b080087dbe}\label{namespaceconvert__dataset__to__yolo_aebd999bd8a1a5542676104b080087dbe} 
+\index{convert\_dataset\_to\_yolo@{convert\_dataset\_to\_yolo}!POSSIBLE\_CLASS\_KEYS@{POSSIBLE\_CLASS\_KEYS}}
+\index{POSSIBLE\_CLASS\_KEYS@{POSSIBLE\_CLASS\_KEYS}!convert\_dataset\_to\_yolo@{convert\_dataset\_to\_yolo}}
+\doxysubsubsection{\texorpdfstring{POSSIBLE\_CLASS\_KEYS}{POSSIBLE\_CLASS\_KEYS}}
+{\footnotesize\ttfamily list convert\+\_\+dataset\+\_\+to\+\_\+yolo.\+POSSIBLE\+\_\+\+CLASS\+\_\+\+KEYS = \mbox{[}\textquotesingle{}label\textquotesingle{}, \textquotesingle{}class\textquotesingle{}, \textquotesingle{}y\textquotesingle{}, \textquotesingle{}name\textquotesingle{}, \textquotesingle{}type\textquotesingle{}\mbox{]}}
+

@@ -1,0 +1,287 @@
+\doxysection{spawn\+\_\+random\+\_\+blocks Namespace Reference}
+\hypertarget{namespacespawn__random__blocks}{}\label{namespacespawn__random__blocks}\index{spawn\_random\_blocks@{spawn\_random\_blocks}}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{namespacespawn__random__blocks_a74fa131318b8c347a47a5c072c4c12dc}{get\+\_\+available\+\_\+models}} ()
+\item 
+\mbox{\hyperlink{namespacespawn__random__blocks_a3751def15fca97cadcaa18ced1ced2e6}{yaw\+\_\+from\+\_\+quat}} (q)
+\item 
+\mbox{\hyperlink{namespacespawn__random__blocks_a27bf141ba1869d2b7ed3a5015c6daf93}{wrap\+\_\+pi}} (a)
+\item 
+\mbox{\hyperlink{namespacespawn__random__blocks_a33bc643ca2ac803dc5a44f4409647ecb}{in\+\_\+no\+\_\+go\+\_\+zone}} (x, y)
+\item 
+\mbox{\hyperlink{namespacespawn__random__blocks_a4eb284c578c0cf3e8a1a1ff05af5567a}{sample\+\_\+xy\+\_\+base}} ()
+\item 
+\mbox{\hyperlink{namespacespawn__random__blocks_abb5d7d9e4ef5c4d197a41ee2553a2d3d}{base\+\_\+to\+\_\+world}} (get\+\_\+state\+\_\+srv, x\+\_\+b, y\+\_\+b, z\+\_\+b, yaw\+\_\+b)
+\item 
+\mbox{\hyperlink{namespacespawn__random__blocks_a5e140f4d965d4d860484422f31e9922d}{world\+\_\+to\+\_\+base}} (get\+\_\+state\+\_\+srv, x\+\_\+w, y\+\_\+w, z\+\_\+w, yaw\+\_\+w)
+\item 
+\mbox{\hyperlink{namespacespawn__random__blocks_ad2e56c4b59fb16c47a93bd19611dffdd}{random\+\_\+pose\+\_\+non\+\_\+overlapping}} (existing\+\_\+xy\+\_\+base, get\+\_\+state\+\_\+srv)
+\item 
+\mbox{\hyperlink{namespacespawn__random__blocks_ae15ba4d8672e82356624e3e9f04a1c49}{fix\+\_\+gazebo\+\_\+physics}} ()
+\item 
+\mbox{\hyperlink{namespacespawn__random__blocks_a128ebea33b5b235e42bedaf23f5ecdc4}{main}} ()
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+str \mbox{\hyperlink{namespacespawn__random__blocks_abb2237deb3ba8b4fb3e59f3a51400da5}{ROBOT\+\_\+\+MODEL\+\_\+\+NAME}} = "{}ur5"{}
+\item 
+int \mbox{\hyperlink{namespacespawn__random__blocks_aa165b5108f9f4eeac9c72b0a3338a51c}{N\+\_\+\+BLOCKS}} = 1
+\item 
+float \mbox{\hyperlink{namespacespawn__random__blocks_a87fd7871d7727ed6cf32b781ef0fcfdd}{MIN\+\_\+\+DIST}} = 0.\+07
+\item 
+float \mbox{\hyperlink{namespacespawn__random__blocks_adb5c8dc23e68525d14aea5c0951ae785}{MARGIN}} = 0.\+02
+\item 
+float \mbox{\hyperlink{namespacespawn__random__blocks_ae4ca72ef5c7b90c078cd4762789f0e41}{TABLE\+\_\+Z}} = 0.\+87
+\item 
+float \mbox{\hyperlink{namespacespawn__random__blocks_a69dcc2da2bf5d7409a5df08c4b8c5981}{SPAWN\+\_\+Z}} = \mbox{\hyperlink{namespacespawn__random__blocks_ae4ca72ef5c7b90c078cd4762789f0e41}{TABLE\+\_\+Z}} + 0.\+003
+\item 
+float \mbox{\hyperlink{namespacespawn__random__blocks_a5890ee9a0886b421236b9b12cf3b4652}{Z\+\_\+\+OFFSET}} = 1.\+72
+\item 
+tuple \mbox{\hyperlink{namespacespawn__random__blocks_a4a7ba82554a619ae29399565e1041c94}{X\+\_\+\+RANGE}} = (-\/0.\+35, 0.\+30)
+\item 
+tuple \mbox{\hyperlink{namespacespawn__random__blocks_a29511853f6c5d63c615a77973dabe73b}{Y\+\_\+\+RANGE}} = (0.\+10, 0.\+40)
+\item 
+float \mbox{\hyperlink{namespacespawn__random__blocks_a881ff58d90af623bd6c67228f274cd33}{MIN\+\_\+\+RXY}} = 0.\+22
+\item 
+float \mbox{\hyperlink{namespacespawn__random__blocks_aed826a4bc74f8a96acd5fb36bbb95a1d}{MAX\+\_\+\+RXY}} = 0.\+55
+\item 
+dict \mbox{\hyperlink{namespacespawn__random__blocks_ac8c487a80791798d465de382ffd1077e}{NO\+\_\+\+GO\+\_\+\+RECT}}
+\item 
+\mbox{\hyperlink{namespacespawn__random__blocks_a2ade5db2de08a818b10f2060754b7da8}{MODELS\+\_\+\+DIR}} = os.\+path.\+expanduser("{}\texorpdfstring{$\sim$}{\string~}/ros\+\_\+ws/src/lab\+\_\+myproject/models"{})
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+\begin{DoxyVerb}@file spawn_random_blocks.py
+@brief Random spawning of rigid blocks in Gazebo for pick-and-place experiments.
+
+This script populates the Gazebo simulation environment with rigid,
+non-deformable blocks randomly placed on a table surface. Spawned objects
+are guaranteed to lie within the robot reachable workspace, avoid predefined
+no-go regions, and not overlap with each other.
+
+Object poses are sampled in the robot base frame and converted to the Gazebo
+world frame using the robot model state. The script is intended for automated
+testing and benchmarking of perception, planning, and manipulation pipelines
+in a pick-and-place scenario.
+
+Main features:
+- Random sampling in the base_link frame
+- Reachability and exclusion zone constraints
+- Non-overlapping object placement
+- On-the-fly adjustment of Gazebo physics parameters
+- Support for multiple block models loaded from disk
+
+This script does not publish perception outputs and is intended for offline
+environment setup only.
+\end{DoxyVerb}
+ 
+
+\doxysubsection{Function Documentation}
+\Hypertarget{namespacespawn__random__blocks_abb5d7d9e4ef5c4d197a41ee2553a2d3d}\label{namespacespawn__random__blocks_abb5d7d9e4ef5c4d197a41ee2553a2d3d} 
+\index{spawn\_random\_blocks@{spawn\_random\_blocks}!base\_to\_world@{base\_to\_world}}
+\index{base\_to\_world@{base\_to\_world}!spawn\_random\_blocks@{spawn\_random\_blocks}}
+\doxysubsubsection{\texorpdfstring{base\_to\_world()}{base\_to\_world()}}
+{\footnotesize\ttfamily spawn\+\_\+random\+\_\+blocks.\+base\+\_\+to\+\_\+world (\begin{DoxyParamCaption}\item[{}]{get\+\_\+state\+\_\+srv,  }\item[{}]{x\+\_\+b,  }\item[{}]{y\+\_\+b,  }\item[{}]{z\+\_\+b,  }\item[{}]{yaw\+\_\+b }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}@brief Convert a pose from base_link frame to Gazebo world frame.
+
+The conversion uses the current robot pose obtained from Gazebo to map
+coordinates expressed in the robot base frame into the global world frame.
+This ensures consistency between perception, planning, and simulation.
+
+@param get_state_srv Gazebo service proxy for retrieving robot state.
+@param x_b X position in base_link frame.
+@param y_b Y position in base_link frame.
+@param z_b Z position in base_link frame.
+@param yaw_b Yaw angle in base_link frame.
+@return Pose expressed in the Gazebo world frame.
+\end{DoxyVerb}
+ \Hypertarget{namespacespawn__random__blocks_ae15ba4d8672e82356624e3e9f04a1c49}\label{namespacespawn__random__blocks_ae15ba4d8672e82356624e3e9f04a1c49} 
+\index{spawn\_random\_blocks@{spawn\_random\_blocks}!fix\_gazebo\_physics@{fix\_gazebo\_physics}}
+\index{fix\_gazebo\_physics@{fix\_gazebo\_physics}!spawn\_random\_blocks@{spawn\_random\_blocks}}
+\doxysubsubsection{\texorpdfstring{fix\_gazebo\_physics()}{fix\_gazebo\_physics()}}
+{\footnotesize\ttfamily spawn\+\_\+random\+\_\+blocks.\+fix\+\_\+gazebo\+\_\+physics (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}@brief Override Gazebo physics parameters for stable object spawning.
+
+This function modifies the default Gazebo ODE physics settings to
+improve contact stability and reduce numerical artifacts when spawning
+small rigid objects on planar surfaces.
+
+The modification avoids the need to edit individual model SDF files.
+\end{DoxyVerb}
+ \Hypertarget{namespacespawn__random__blocks_a74fa131318b8c347a47a5c072c4c12dc}\label{namespacespawn__random__blocks_a74fa131318b8c347a47a5c072c4c12dc} 
+\index{spawn\_random\_blocks@{spawn\_random\_blocks}!get\_available\_models@{get\_available\_models}}
+\index{get\_available\_models@{get\_available\_models}!spawn\_random\_blocks@{spawn\_random\_blocks}}
+\doxysubsubsection{\texorpdfstring{get\_available\_models()}{get\_available\_models()}}
+{\footnotesize\ttfamily spawn\+\_\+random\+\_\+blocks.\+get\+\_\+available\+\_\+models (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}@brief Retrieve all available block models.
+
+Scans the models directory and returns the names of all Gazebo models
+that provide a valid SDF description. Each model corresponds to a rigid
+block that can be spawned in the simulation.
+
+@return List of available model names.
+\end{DoxyVerb}
+ \Hypertarget{namespacespawn__random__blocks_a33bc643ca2ac803dc5a44f4409647ecb}\label{namespacespawn__random__blocks_a33bc643ca2ac803dc5a44f4409647ecb} 
+\index{spawn\_random\_blocks@{spawn\_random\_blocks}!in\_no\_go\_zone@{in\_no\_go\_zone}}
+\index{in\_no\_go\_zone@{in\_no\_go\_zone}!spawn\_random\_blocks@{spawn\_random\_blocks}}
+\doxysubsubsection{\texorpdfstring{in\_no\_go\_zone()}{in\_no\_go\_zone()}}
+{\footnotesize\ttfamily spawn\+\_\+random\+\_\+blocks.\+in\+\_\+no\+\_\+go\+\_\+zone (\begin{DoxyParamCaption}\item[{}]{x,  }\item[{}]{y }\end{DoxyParamCaption})}
+
+\Hypertarget{namespacespawn__random__blocks_a128ebea33b5b235e42bedaf23f5ecdc4}\label{namespacespawn__random__blocks_a128ebea33b5b235e42bedaf23f5ecdc4} 
+\index{spawn\_random\_blocks@{spawn\_random\_blocks}!main@{main}}
+\index{main@{main}!spawn\_random\_blocks@{spawn\_random\_blocks}}
+\doxysubsubsection{\texorpdfstring{main()}{main()}}
+{\footnotesize\ttfamily spawn\+\_\+random\+\_\+blocks.\+main (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}@brief Main entry point for random block spawning.
+
+Initializes ROS, configures Gazebo physics, selects random block models,
+and spawns them at valid poses in the simulation environment.
+\end{DoxyVerb}
+ \Hypertarget{namespacespawn__random__blocks_ad2e56c4b59fb16c47a93bd19611dffdd}\label{namespacespawn__random__blocks_ad2e56c4b59fb16c47a93bd19611dffdd} 
+\index{spawn\_random\_blocks@{spawn\_random\_blocks}!random\_pose\_non\_overlapping@{random\_pose\_non\_overlapping}}
+\index{random\_pose\_non\_overlapping@{random\_pose\_non\_overlapping}!spawn\_random\_blocks@{spawn\_random\_blocks}}
+\doxysubsubsection{\texorpdfstring{random\_pose\_non\_overlapping()}{random\_pose\_non\_overlapping()}}
+{\footnotesize\ttfamily spawn\+\_\+random\+\_\+blocks.\+random\+\_\+pose\+\_\+non\+\_\+overlapping (\begin{DoxyParamCaption}\item[{}]{existing\+\_\+xy\+\_\+base,  }\item[{}]{get\+\_\+state\+\_\+srv }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}@brief Generate a random non-overlapping object pose.
+
+Samples a valid object pose in the base_link frame while ensuring a
+minimum distance from previously spawned objects. The pose is then
+converted to the Gazebo world frame for spawning.
+
+@param existing_xy_base List of already occupied (x, y) positions.
+@param get_state_srv Gazebo service proxy.
+@return Tuple containing the world-frame pose and base-frame (x, y).
+\end{DoxyVerb}
+ \Hypertarget{namespacespawn__random__blocks_a4eb284c578c0cf3e8a1a1ff05af5567a}\label{namespacespawn__random__blocks_a4eb284c578c0cf3e8a1a1ff05af5567a} 
+\index{spawn\_random\_blocks@{spawn\_random\_blocks}!sample\_xy\_base@{sample\_xy\_base}}
+\index{sample\_xy\_base@{sample\_xy\_base}!spawn\_random\_blocks@{spawn\_random\_blocks}}
+\doxysubsubsection{\texorpdfstring{sample\_xy\_base()}{sample\_xy\_base()}}
+{\footnotesize\ttfamily spawn\+\_\+random\+\_\+blocks.\+sample\+\_\+xy\+\_\+base (\begin{DoxyParamCaption}{ }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}@brief Sample a valid (x, y) position in the robot base frame.
+
+The sampling respects table boundaries, radial reachability constraints,
+and predefined no-go regions. The function retries multiple times before
+returning a fallback position.
+
+@return A valid (x, y) position expressed in the base_link frame.
+\end{DoxyVerb}
+ \Hypertarget{namespacespawn__random__blocks_a5e140f4d965d4d860484422f31e9922d}\label{namespacespawn__random__blocks_a5e140f4d965d4d860484422f31e9922d} 
+\index{spawn\_random\_blocks@{spawn\_random\_blocks}!world\_to\_base@{world\_to\_base}}
+\index{world\_to\_base@{world\_to\_base}!spawn\_random\_blocks@{spawn\_random\_blocks}}
+\doxysubsubsection{\texorpdfstring{world\_to\_base()}{world\_to\_base()}}
+{\footnotesize\ttfamily spawn\+\_\+random\+\_\+blocks.\+world\+\_\+to\+\_\+base (\begin{DoxyParamCaption}\item[{}]{get\+\_\+state\+\_\+srv,  }\item[{}]{x\+\_\+w,  }\item[{}]{y\+\_\+w,  }\item[{}]{z\+\_\+w,  }\item[{}]{yaw\+\_\+w }\end{DoxyParamCaption})}
+
+\begin{DoxyVerb}Converte world -> base_link (per log/debug).\end{DoxyVerb}
+ \Hypertarget{namespacespawn__random__blocks_a27bf141ba1869d2b7ed3a5015c6daf93}\label{namespacespawn__random__blocks_a27bf141ba1869d2b7ed3a5015c6daf93} 
+\index{spawn\_random\_blocks@{spawn\_random\_blocks}!wrap\_pi@{wrap\_pi}}
+\index{wrap\_pi@{wrap\_pi}!spawn\_random\_blocks@{spawn\_random\_blocks}}
+\doxysubsubsection{\texorpdfstring{wrap\_pi()}{wrap\_pi()}}
+{\footnotesize\ttfamily spawn\+\_\+random\+\_\+blocks.\+wrap\+\_\+pi (\begin{DoxyParamCaption}\item[{}]{a }\end{DoxyParamCaption})}
+
+\Hypertarget{namespacespawn__random__blocks_a3751def15fca97cadcaa18ced1ced2e6}\label{namespacespawn__random__blocks_a3751def15fca97cadcaa18ced1ced2e6} 
+\index{spawn\_random\_blocks@{spawn\_random\_blocks}!yaw\_from\_quat@{yaw\_from\_quat}}
+\index{yaw\_from\_quat@{yaw\_from\_quat}!spawn\_random\_blocks@{spawn\_random\_blocks}}
+\doxysubsubsection{\texorpdfstring{yaw\_from\_quat()}{yaw\_from\_quat()}}
+{\footnotesize\ttfamily spawn\+\_\+random\+\_\+blocks.\+yaw\+\_\+from\+\_\+quat (\begin{DoxyParamCaption}\item[{}]{q }\end{DoxyParamCaption})}
+
+
+
+\doxysubsection{Variable Documentation}
+\Hypertarget{namespacespawn__random__blocks_adb5c8dc23e68525d14aea5c0951ae785}\label{namespacespawn__random__blocks_adb5c8dc23e68525d14aea5c0951ae785} 
+\index{spawn\_random\_blocks@{spawn\_random\_blocks}!MARGIN@{MARGIN}}
+\index{MARGIN@{MARGIN}!spawn\_random\_blocks@{spawn\_random\_blocks}}
+\doxysubsubsection{\texorpdfstring{MARGIN}{MARGIN}}
+{\footnotesize\ttfamily float spawn\+\_\+random\+\_\+blocks.\+MARGIN = 0.\+02}
+
+\Hypertarget{namespacespawn__random__blocks_aed826a4bc74f8a96acd5fb36bbb95a1d}\label{namespacespawn__random__blocks_aed826a4bc74f8a96acd5fb36bbb95a1d} 
+\index{spawn\_random\_blocks@{spawn\_random\_blocks}!MAX\_RXY@{MAX\_RXY}}
+\index{MAX\_RXY@{MAX\_RXY}!spawn\_random\_blocks@{spawn\_random\_blocks}}
+\doxysubsubsection{\texorpdfstring{MAX\_RXY}{MAX\_RXY}}
+{\footnotesize\ttfamily float spawn\+\_\+random\+\_\+blocks.\+MAX\+\_\+\+RXY = 0.\+55}
+
+\Hypertarget{namespacespawn__random__blocks_a87fd7871d7727ed6cf32b781ef0fcfdd}\label{namespacespawn__random__blocks_a87fd7871d7727ed6cf32b781ef0fcfdd} 
+\index{spawn\_random\_blocks@{spawn\_random\_blocks}!MIN\_DIST@{MIN\_DIST}}
+\index{MIN\_DIST@{MIN\_DIST}!spawn\_random\_blocks@{spawn\_random\_blocks}}
+\doxysubsubsection{\texorpdfstring{MIN\_DIST}{MIN\_DIST}}
+{\footnotesize\ttfamily float spawn\+\_\+random\+\_\+blocks.\+MIN\+\_\+\+DIST = 0.\+07}
+
+\Hypertarget{namespacespawn__random__blocks_a881ff58d90af623bd6c67228f274cd33}\label{namespacespawn__random__blocks_a881ff58d90af623bd6c67228f274cd33} 
+\index{spawn\_random\_blocks@{spawn\_random\_blocks}!MIN\_RXY@{MIN\_RXY}}
+\index{MIN\_RXY@{MIN\_RXY}!spawn\_random\_blocks@{spawn\_random\_blocks}}
+\doxysubsubsection{\texorpdfstring{MIN\_RXY}{MIN\_RXY}}
+{\footnotesize\ttfamily float spawn\+\_\+random\+\_\+blocks.\+MIN\+\_\+\+RXY = 0.\+22}
+
+\Hypertarget{namespacespawn__random__blocks_a2ade5db2de08a818b10f2060754b7da8}\label{namespacespawn__random__blocks_a2ade5db2de08a818b10f2060754b7da8} 
+\index{spawn\_random\_blocks@{spawn\_random\_blocks}!MODELS\_DIR@{MODELS\_DIR}}
+\index{MODELS\_DIR@{MODELS\_DIR}!spawn\_random\_blocks@{spawn\_random\_blocks}}
+\doxysubsubsection{\texorpdfstring{MODELS\_DIR}{MODELS\_DIR}}
+{\footnotesize\ttfamily spawn\+\_\+random\+\_\+blocks.\+MODELS\+\_\+\+DIR = os.\+path.\+expanduser("{}\texorpdfstring{$\sim$}{\string~}/ros\+\_\+ws/src/lab\+\_\+myproject/models"{})}
+
+\Hypertarget{namespacespawn__random__blocks_aa165b5108f9f4eeac9c72b0a3338a51c}\label{namespacespawn__random__blocks_aa165b5108f9f4eeac9c72b0a3338a51c} 
+\index{spawn\_random\_blocks@{spawn\_random\_blocks}!N\_BLOCKS@{N\_BLOCKS}}
+\index{N\_BLOCKS@{N\_BLOCKS}!spawn\_random\_blocks@{spawn\_random\_blocks}}
+\doxysubsubsection{\texorpdfstring{N\_BLOCKS}{N\_BLOCKS}}
+{\footnotesize\ttfamily int spawn\+\_\+random\+\_\+blocks.\+N\+\_\+\+BLOCKS = 1}
+
+\Hypertarget{namespacespawn__random__blocks_ac8c487a80791798d465de382ffd1077e}\label{namespacespawn__random__blocks_ac8c487a80791798d465de382ffd1077e} 
+\index{spawn\_random\_blocks@{spawn\_random\_blocks}!NO\_GO\_RECT@{NO\_GO\_RECT}}
+\index{NO\_GO\_RECT@{NO\_GO\_RECT}!spawn\_random\_blocks@{spawn\_random\_blocks}}
+\doxysubsubsection{\texorpdfstring{NO\_GO\_RECT}{NO\_GO\_RECT}}
+{\footnotesize\ttfamily dict spawn\+\_\+random\+\_\+blocks.\+NO\+\_\+\+GO\+\_\+\+RECT}
+
+{\bfseries Initial value\+:}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{00001\ =\ \ \{}
+\DoxyCodeLine{00002\ \ \ \ \ \textcolor{stringliteral}{"{}x\_min"{}}:\ -\/0.35,}
+\DoxyCodeLine{00003\ \ \ \ \ \textcolor{stringliteral}{"{}x\_max"{}}:\ -\/0.18,}
+\DoxyCodeLine{00004\ \ \ \ \ \textcolor{stringliteral}{"{}y\_min"{}}:\ \ 0.10,}
+\DoxyCodeLine{00005\ \ \ \ \ \textcolor{stringliteral}{"{}y\_max"{}}:\ \ 0.22}
+\DoxyCodeLine{00006\ \}}
+
+\end{DoxyCode}
+\Hypertarget{namespacespawn__random__blocks_abb2237deb3ba8b4fb3e59f3a51400da5}\label{namespacespawn__random__blocks_abb2237deb3ba8b4fb3e59f3a51400da5} 
+\index{spawn\_random\_blocks@{spawn\_random\_blocks}!ROBOT\_MODEL\_NAME@{ROBOT\_MODEL\_NAME}}
+\index{ROBOT\_MODEL\_NAME@{ROBOT\_MODEL\_NAME}!spawn\_random\_blocks@{spawn\_random\_blocks}}
+\doxysubsubsection{\texorpdfstring{ROBOT\_MODEL\_NAME}{ROBOT\_MODEL\_NAME}}
+{\footnotesize\ttfamily str spawn\+\_\+random\+\_\+blocks.\+ROBOT\+\_\+\+MODEL\+\_\+\+NAME = "{}ur5"{}}
+
+\Hypertarget{namespacespawn__random__blocks_a69dcc2da2bf5d7409a5df08c4b8c5981}\label{namespacespawn__random__blocks_a69dcc2da2bf5d7409a5df08c4b8c5981} 
+\index{spawn\_random\_blocks@{spawn\_random\_blocks}!SPAWN\_Z@{SPAWN\_Z}}
+\index{SPAWN\_Z@{SPAWN\_Z}!spawn\_random\_blocks@{spawn\_random\_blocks}}
+\doxysubsubsection{\texorpdfstring{SPAWN\_Z}{SPAWN\_Z}}
+{\footnotesize\ttfamily float spawn\+\_\+random\+\_\+blocks.\+SPAWN\+\_\+Z = \mbox{\hyperlink{namespacespawn__random__blocks_ae4ca72ef5c7b90c078cd4762789f0e41}{TABLE\+\_\+Z}} + 0.\+003}
+
+\Hypertarget{namespacespawn__random__blocks_ae4ca72ef5c7b90c078cd4762789f0e41}\label{namespacespawn__random__blocks_ae4ca72ef5c7b90c078cd4762789f0e41} 
+\index{spawn\_random\_blocks@{spawn\_random\_blocks}!TABLE\_Z@{TABLE\_Z}}
+\index{TABLE\_Z@{TABLE\_Z}!spawn\_random\_blocks@{spawn\_random\_blocks}}
+\doxysubsubsection{\texorpdfstring{TABLE\_Z}{TABLE\_Z}}
+{\footnotesize\ttfamily float spawn\+\_\+random\+\_\+blocks.\+TABLE\+\_\+Z = 0.\+87}
+
+\Hypertarget{namespacespawn__random__blocks_a4a7ba82554a619ae29399565e1041c94}\label{namespacespawn__random__blocks_a4a7ba82554a619ae29399565e1041c94} 
+\index{spawn\_random\_blocks@{spawn\_random\_blocks}!X\_RANGE@{X\_RANGE}}
+\index{X\_RANGE@{X\_RANGE}!spawn\_random\_blocks@{spawn\_random\_blocks}}
+\doxysubsubsection{\texorpdfstring{X\_RANGE}{X\_RANGE}}
+{\footnotesize\ttfamily tuple spawn\+\_\+random\+\_\+blocks.\+X\+\_\+\+RANGE = (-\/0.\+35, 0.\+30)}
+
+\Hypertarget{namespacespawn__random__blocks_a29511853f6c5d63c615a77973dabe73b}\label{namespacespawn__random__blocks_a29511853f6c5d63c615a77973dabe73b} 
+\index{spawn\_random\_blocks@{spawn\_random\_blocks}!Y\_RANGE@{Y\_RANGE}}
+\index{Y\_RANGE@{Y\_RANGE}!spawn\_random\_blocks@{spawn\_random\_blocks}}
+\doxysubsubsection{\texorpdfstring{Y\_RANGE}{Y\_RANGE}}
+{\footnotesize\ttfamily tuple spawn\+\_\+random\+\_\+blocks.\+Y\+\_\+\+RANGE = (0.\+10, 0.\+40)}
+
+\Hypertarget{namespacespawn__random__blocks_a5890ee9a0886b421236b9b12cf3b4652}\label{namespacespawn__random__blocks_a5890ee9a0886b421236b9b12cf3b4652} 
+\index{spawn\_random\_blocks@{spawn\_random\_blocks}!Z\_OFFSET@{Z\_OFFSET}}
+\index{Z\_OFFSET@{Z\_OFFSET}!spawn\_random\_blocks@{spawn\_random\_blocks}}
+\doxysubsubsection{\texorpdfstring{Z\_OFFSET}{Z\_OFFSET}}
+{\footnotesize\ttfamily float spawn\+\_\+random\+\_\+blocks.\+Z\+\_\+\+OFFSET = 1.\+72}
+

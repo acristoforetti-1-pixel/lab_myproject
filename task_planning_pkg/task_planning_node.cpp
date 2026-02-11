@@ -50,8 +50,23 @@
 #include <memory>
 #include <array>
 
+/**
+ * @class PickPlaceIK
+ * @brief Provides task-level pick-and-place motion planning using KDL IK.
+ *
+ * This class subscribes to joint states and object poses and publishes
+ * joint targets for the UR5 manipulator. It computes feasible trajectories
+ * for grasping, transporting, and placing objects using inverse kinematics.
+ */
 class PickPlaceIK {
 public:
+   /**
+   * @brief Constructor that initializes ROS subscribers, publishers, and KDL IK.
+   *
+   * It loads parameters from the ROS parameter server, sets default values,
+   * and initializes internal states. After initialization, the node is ready
+   * to receive object poses and execute pick-and-place tasks.
+   */
   PickPlaceIK()
   : have_js_(false), have_obj_(false), ack_(false)
   {
@@ -149,6 +164,12 @@ public:
     ROS_INFO("  yaw_gripper_offset=%.3f rad (%.1f deg)", yaw_gripper_offset_, yaw_gripper_offset_ * 180.0 / M_PI);
   }
 
+  /**
+   * @brief Spins the node, processing callbacks and executing pick-and-place.
+   *
+   * Continuously checks for new object poses and joint states, and triggers
+   * pick-and-place operations when a valid object is detected.
+   */
   void spin() {
     ros::Rate r(50);
     while (ros::ok()) {
@@ -280,16 +301,26 @@ private:
   }
 
   // -------------------- ROS callbacks --------------------
+  /**
+   * @brief Callback for receiving object names from perception.
+   * @param msg The ROS String message containing the object name.
+   */
   void objNameCb(const std_msgs::String& msg) {
     std::lock_guard<std::mutex> lk(mtx_);
     last_obj_name_ = msg.data;
   }
-
+  /**
+   * @brief Callback for receiving object UID from perception.
+   * @param msg The ROS String message containing the object UID.
+   */
   void objUidCb(const std_msgs::String& msg) {
     std::lock_guard<std::mutex> lk(mtx_);
     current_uid_ = msg.data;
   }
-
+  /**
+   * @brief Callback for receiving the current joint state.
+   * @param msg The ROS JointState message.
+   */
   void jsCb(const sensor_msgs::JointState& msg) {
     if (msg.name.size() != msg.position.size()) return;
     std::lock_guard<std::mutex> lk(mtx_);
@@ -317,19 +348,28 @@ private:
 
     have_js_ = true;
   }
-
+  /**
+   * @brief Callback for acknowledgement messages.
+   * @param msg Boolean flag indicating motion acknowledgement.
+   */
   void ackCb(const std_msgs::Bool& msg) {
     std::lock_guard<std::mutex> lk(mtx_);
     ack_ = msg.data;
   }
-
+  /**
+   * @brief Callback for receiving object pose in the robot base frame.
+   * @param msg The ROS PoseStamped message.
+   */
   void objPoseCb(const geometry_msgs::PoseStamped& msg) {
     if (msg.header.frame_id != base_link_) return;
     std::lock_guard<std::mutex> lk(mtx_);
     obj_pose_base_ = msg;
     have_obj_ = true;
   }
-
+  /**
+   * @brief Callback for receiving object orientation as RPY array.
+   * @param msg ROS Float64MultiArray with [x,y,z,roll,pitch,yaw].
+   */
   void objRpyCb(const std_msgs::Float64MultiArray& msg) {
     if (msg.data.size() < 6) return;
 
@@ -351,6 +391,11 @@ private:
   }
 
   // -------------------- ack + publish --------------------
+  /**
+   * @brief Waits for an acknowledgement with timeout.
+   * @param timeout_s Timeout in seconds.
+   * @return True if ack received, false if timed out.
+   */
   bool waitAck(double timeout_s) {
     ros::Rate r(200);
     const ros::Time t0 = ros::Time::now();
@@ -364,7 +409,13 @@ private:
     }
     return false;
   }
-
+  /**
+   * @brief Waits for gripper to reach the target position.
+   * @param cmd Target gripper command.
+   * @param tol Allowed tolerance.
+   * @param timeout_s Timeout in seconds.
+   * @return True if gripper reached target, false otherwise.
+   */
   bool waitGripperAt(double cmd, double tol, double timeout_s) {
     ros::Rate r(200);
     const ros::Time t0 = ros::Time::now();
@@ -381,7 +432,10 @@ private:
     }
     return false;
   }
-
+  /**
+   * @brief Publishes joint targets to the robot.
+   * @param q_arm6_raw First 6 joint positions for the arm.
+   */
   void publishJointTarget(const std::vector<double>& q_arm6_raw) {
     if (q_arm6_raw.size() < 6) return;
 
@@ -405,6 +459,10 @@ private:
   }
 
   // -------------------- home --------------------
+  /**
+   * @brief Loads home joint configuration from parameters.
+   * @param pnh ROS private NodeHandle.
+   */
   void loadHomeJoints(ros::NodeHandle& pnh) {
     std::vector<double> q0;
     bool ok_q0 = ros::param::get("/ur5/q_0", q0) || ros::param::get("/ur5e/q_0", q0);
@@ -418,6 +476,10 @@ private:
   }
 
   // -------------------- KDL --------------------
+  /**
+   * @brief Initializes KDL solvers using robot URDF.
+   * @return True if KDL initialization succeeded.
+   */
   bool initKDL() {
     ros::NodeHandle nh;
     std::string urdf;
@@ -443,7 +505,13 @@ private:
     ik_pos_nolimit_.reset(new KDL::ChainIkSolverPos_NR(chain_, *fk_, *ik_vel_, 200, 1e-5));
     return true;
   }
-
+  /**
+   * @brief Solves IK for a target pose.
+   * @param target_pose Desired end-effector pose.
+   * @param seed8_raw Seed configuration for IK.
+   * @param q_out6_raw Resulting 6-DOF joint solution.
+   * @return True if solution found, false otherwise.
+   */
   bool solveIK(const geometry_msgs::Pose& target_pose,
                const std::vector<double>& seed8_raw,
                std::vector<double>& q_out6_raw) {
@@ -630,6 +698,11 @@ private:
   }
 
   // -------------------- MAIN pick&place --------------------
+  /**
+   * @brief Main pick-and-place routine given object pose and seed.
+   * @param obj Object pose in base frame.
+   * @param q_seed8_raw Seed joint configuration.
+   */
   void doPickPlace(const geometry_msgs::PoseStamped& obj, std::vector<double> q_seed8_raw)
   {
     auto doOpen = [&](const char* tag)->void {
@@ -854,6 +927,11 @@ private:
   std::unique_ptr<KDL::ChainIkSolverPos_NR>    ik_pos_nolimit_;
 };
 
+/**
+ * @brief Main entry point for task_planning_node.
+ *
+ * Initializes ROS, creates PickPlaceIK instance, and starts spinning.
+ */
 int main(int argc, char** argv) {
   ros::init(argc, argv, "task_planning_node");
   PickPlaceIK n;
