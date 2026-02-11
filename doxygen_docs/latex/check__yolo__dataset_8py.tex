@@ -1,0 +1,68 @@
+\doxysection{/home/giuntinux/trento\+\_\+lab\+\_\+home/ros\+\_\+ws/src/lab\+\_\+myproject/data/check\+\_\+yolo\+\_\+dataset.py File Reference}
+\hypertarget{check__yolo__dataset_8py}{}\label{check__yolo__dataset_8py}\index{/home/giuntinux/trento\_lab\_home/ros\_ws/src/lab\_myproject/data/check\_yolo\_dataset.py@{/home/giuntinux/trento\_lab\_home/ros\_ws/src/lab\_myproject/data/check\_yolo\_dataset.py}}
+
+
+Utility script to visually verify YOLO-\/format datasets.  
+
+
+{\ttfamily import os;}\newline
+{\ttfamily import "{}.\+jpg"{};}\newline
+{\ttfamily import "{}.\+jpeg"{};}\newline
+{\ttfamily import "{}.\+png"{};}\newline
+{\ttfamily import "{}.\+bmp"{};}\newline
+{\ttfamily import "{}r"{};}\newline
+{\ttfamily import "{}names"{};}\newline
+{\ttfamily import "{}images"{};}\newline
+{\ttfamily import "{}labels"{};}\newline
+{\ttfamily import "{}Nessuna directory immagini trovata\+:"{};}\newline
+{\ttfamily import "{}Nessuna immagine trovata in"{};}\newline
+{\ttfamily import "{}Deja\+Vu\+Sans.\+ttf"{};}\newline
+{\ttfamily import "{}.\+txt"{};}\newline
+{\ttfamily import "{}RGB"{};}\newline
+{\ttfamily import "{}Label mancante per \{rel\+\_\+path\}  -\/$>$ \{lbl\+\_\+path\}"{};}\newline
+{\ttfamily import "{}Formato label errato in \{lbl\+\_\+path\}\+: \{line.\+strip()\}"{};}\newline
+{\ttfamily import "{}Valori label non numerici in \{lbl\+\_\+path\}\+: \{line.\+strip()\}"{};}\newline
+{\ttfamily import $<$ 0 or cid $>$;}\newline
+{\ttfamily import "{}Class ID fuori range (\{cid\}) in \{lbl\+\_\+path\}"{};}\newline
+{\ttfamily import "{}Debug completato"{};}\newline
+{\ttfamily import "{}Immagini annotate salvate in\+: \{args.\+output\}"{};}\newline
+{\ttfamily import "{}\+\_\+\+\_\+main\+\_\+\+\_\+"{};}\newline
+{\ttfamily import "{}-\/-\/dataset"{};}\newline
+{\ttfamily import "{}dataset\+\_\+yolo"{};}\newline
+{\ttfamily import "{}Root dataset YOLO"{};}\newline
+{\ttfamily import "{}-\/-\/data-\/yaml"{};}\newline
+{\ttfamily import "{}dataset\+\_\+yolo/data.\+yaml"{};}\newline
+{\ttfamily import "{}Path data.\+yaml"{};}\newline
+{\ttfamily import "{}-\/-\/split"{};}\newline
+{\ttfamily import "{}train"{};}\newline
+{\ttfamily import "{}val"{};}\newline
+{\ttfamily import "{}-\/-\/num-\/samples"{};}\newline
+{\ttfamily import "{}Numero immagini da controllare"{};}\newline
+{\ttfamily import "{}-\/-\/output"{};}\newline
+{\ttfamily import "{}debug\+\_\+check"{};}\newline
+{\ttfamily import "{}Cartella output immagini annotate"{};}\newline
+Include dependency graph for check\+\_\+yolo\+\_\+dataset.\+py\+:
+\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{check__yolo__dataset_8py__incl}
+\end{center}
+\end{figure}
+
+
+\doxysubsection{Detailed Description}
+Utility script to visually verify YOLO-\/format datasets. 
+
+This script recursively scans a YOLO dataset structure and checks consistency between images and corresponding label files.
+
+For a random subset of images\+:
+\begin{DoxyItemize}
+\item Loads the image
+\item Parses YOLO bounding box annotations
+\item Converts normalized coordinates to pixel coordinates
+\item Draws bounding boxes and class labels
+\item Saves annotated images preserving folder hierarchy
+\end{DoxyItemize}
+
+Intended for dataset debugging and annotation validation. 

@@ -1,0 +1,125 @@
+\doxysection{/home/giuntinux/trento\+\_\+lab\+\_\+home/ros\+\_\+ws/src/lab\+\_\+myproject/data/convert\+\_\+dataset\+\_\+to\+\_\+yolo.py File Reference}
+\hypertarget{convert__dataset__to__yolo_8py}{}\label{convert__dataset__to__yolo_8py}\index{/home/giuntinux/trento\_lab\_home/ros\_ws/src/lab\_myproject/data/convert\_dataset\_to\_yolo.py@{/home/giuntinux/trento\_lab\_home/ros\_ws/src/lab\_myproject/data/convert\_dataset\_to\_yolo.py}}
+
+
+Converts a custom annotated dataset into YOLO format.  
+
+
+{\ttfamily import os;}\newline
+{\ttfamily import "{}X1-\/\+Y1-\/\+Z2"{};}\newline
+{\ttfamily import "{}X1-\/\+Y2-\/\+Z1"{};}\newline
+{\ttfamily import "{}X1-\/\+Y2-\/\+Z2"{};}\newline
+{\ttfamily import "{}X1-\/\+Y2-\/\+Z2-\/\+CHAMFER"{};}\newline
+{\ttfamily import "{}X1-\/\+Y2-\/\+Z2-\/\+TWINFILLET"{};}\newline
+{\ttfamily import "{}X1-\/\+Y3-\/\+Z2"{};}\newline
+{\ttfamily import "{}X1-\/\+Y3-\/\+Z2-\/\+FILLET"{};}\newline
+{\ttfamily import "{}X1-\/\+Y4-\/\+Z1"{};}\newline
+{\ttfamily import "{}X1-\/\+Y4-\/\+Z2"{};}\newline
+{\ttfamily import "{}X2-\/\+Y2-\/\+Z2"{};}\newline
+{\ttfamily import "{}X2-\/\+Y2-\/\+Z2-\/\+FILLET"{};}\newline
+{\ttfamily import "{}\mbox{[}\+WARN\mbox{]} Impossibile aprire immagine \{img\+\_\+path\}\+: \{e\}"{};}\newline
+{\ttfamily import "{}\mbox{[}\+WARN\mbox{]} Impossibile leggere json \{json\+\_\+path\}\+: \{e\}"{};}\newline
+Include dependency graph for convert\+\_\+dataset\+\_\+to\+\_\+yolo.\+py\+:
+\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{convert__dataset__to__yolo_8py__incl}
+\end{center}
+\end{figure}
+\doxysubsubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{convert__dataset__to__yolo_8py_ac0a3893e46674bbe04b9d5a06d642a41}{float}} (verts\mbox{[}0\mbox{]}\mbox{[}1\mbox{]}) \mbox{\hyperlink{convert__dataset__to__yolo_8py_a9ed3e2d6743288bd0d2bd665bd313f3d}{maxx}}
+\item 
+\mbox{\hyperlink{convert__dataset__to__yolo_8py_abfd7ade7cd3136ff3d31d319f898a657}{float}} (verts\mbox{[}1\mbox{]}\mbox{[}1\mbox{]}) bbox
+\end{DoxyCompactItemize}
+\doxysubsubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{convert__dataset__to__yolo_8py_a9ed3e2d6743288bd0d2bd665bd313f3d}{maxx}}
+\item 
+\mbox{\hyperlink{convert__dataset__to__yolo_8py_a249b7c800ca83d50b15a3519e3c2cf0e}{maxy}}
+\item 
+\mbox{\hyperlink{convert__dataset__to__yolo_8py_a78a3361d0d025481aa6c00d9700e6028}{miny}} = \mbox{\hyperlink{convert__dataset__to__yolo_8py_ac0a3893e46674bbe04b9d5a06d642a41}{float}}(verts\mbox{[}0\mbox{]}\mbox{[}0\mbox{]})
+\item 
+\mbox{\hyperlink{convert__dataset__to__yolo_8py_a18f05aeddc212b523b40818fa2b87b33}{\+\_\+}}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+Converts a custom annotated dataset into YOLO format. 
+
+This script scans a dataset containing JSON annotations (view=\texorpdfstring{$\ast$}{*}.json) and corresponding images, extracts object bounding boxes, converts them into normalized YOLO format, and generates\+:
+
+
+\begin{DoxyItemize}
+\item images/train and images/val directories
+\item labels/train and labels/val directories
+\item a data.\+yaml configuration file
+\end{DoxyItemize}
+
+The relative directory structure (e.\+g., assign\+X/sceneY) is preserved in order to avoid filename collisions.
+
+Supports optional scene-\/based splitting to ensure that all views from the same scene belong to the same dataset split. 
+
+\doxysubsection{Function Documentation}
+\Hypertarget{convert__dataset__to__yolo_8py_ac0a3893e46674bbe04b9d5a06d642a41}\label{convert__dataset__to__yolo_8py_ac0a3893e46674bbe04b9d5a06d642a41} 
+\index{convert\_dataset\_to\_yolo.py@{convert\_dataset\_to\_yolo.py}!float@{float}}
+\index{float@{float}!convert\_dataset\_to\_yolo.py@{convert\_dataset\_to\_yolo.py}}
+\doxysubsubsection{\texorpdfstring{float()}{float()}\hspace{0.1cm}{\footnotesize\ttfamily [1/2]}}
+{\footnotesize\ttfamily float (\begin{DoxyParamCaption}\item[{verts}]{\mbox{[}0\mbox{]}\mbox{[}1\mbox{]} }\end{DoxyParamCaption})}
+
+\Hypertarget{convert__dataset__to__yolo_8py_abfd7ade7cd3136ff3d31d319f898a657}\label{convert__dataset__to__yolo_8py_abfd7ade7cd3136ff3d31d319f898a657} 
+\index{convert\_dataset\_to\_yolo.py@{convert\_dataset\_to\_yolo.py}!float@{float}}
+\index{float@{float}!convert\_dataset\_to\_yolo.py@{convert\_dataset\_to\_yolo.py}}
+\doxysubsubsection{\texorpdfstring{float()}{float()}\hspace{0.1cm}{\footnotesize\ttfamily [2/2]}}
+{\footnotesize\ttfamily float (\begin{DoxyParamCaption}\item[{verts}]{\mbox{[}1\mbox{]}\mbox{[}1\mbox{]} }\end{DoxyParamCaption})}
+
+
+
+\doxysubsection{Variable Documentation}
+\Hypertarget{convert__dataset__to__yolo_8py_a18f05aeddc212b523b40818fa2b87b33}\label{convert__dataset__to__yolo_8py_a18f05aeddc212b523b40818fa2b87b33} 
+\index{convert\_dataset\_to\_yolo.py@{convert\_dataset\_to\_yolo.py}!\_@{\_}}
+\index{\_@{\_}!convert\_dataset\_to\_yolo.py@{convert\_dataset\_to\_yolo.py}}
+\doxysubsubsection{\texorpdfstring{\_}{\_}}
+{\footnotesize\ttfamily \+\_\+}
+
+\Hypertarget{convert__dataset__to__yolo_8py_a9ed3e2d6743288bd0d2bd665bd313f3d}\label{convert__dataset__to__yolo_8py_a9ed3e2d6743288bd0d2bd665bd313f3d} 
+\index{convert\_dataset\_to\_yolo.py@{convert\_dataset\_to\_yolo.py}!maxx@{maxx}}
+\index{maxx@{maxx}!convert\_dataset\_to\_yolo.py@{convert\_dataset\_to\_yolo.py}}
+\doxysubsubsection{\texorpdfstring{maxx}{maxx}}
+{\footnotesize\ttfamily maxx}
+
+{\bfseries Initial value\+:}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{=\ max(bx[0],\ bx[2])}
+\DoxyCodeLine{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \mbox{\hyperlink{convert__dataset__to__yolo_8py_a78a3361d0d025481aa6c00d9700e6028}{miny}}\ =\ min(bx[1],\ bx[3])}
+
+\end{DoxyCode}
+\Hypertarget{convert__dataset__to__yolo_8py_a249b7c800ca83d50b15a3519e3c2cf0e}\label{convert__dataset__to__yolo_8py_a249b7c800ca83d50b15a3519e3c2cf0e} 
+\index{convert\_dataset\_to\_yolo.py@{convert\_dataset\_to\_yolo.py}!maxy@{maxy}}
+\index{maxy@{maxy}!convert\_dataset\_to\_yolo.py@{convert\_dataset\_to\_yolo.py}}
+\doxysubsubsection{\texorpdfstring{maxy}{maxy}}
+{\footnotesize\ttfamily maxy}
+
+{\bfseries Initial value\+:}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{=\ max(bx[1],\ bx[3])}
+\DoxyCodeLine{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ bbox\ =\ (minx,\ \mbox{\hyperlink{convert__dataset__to__yolo_8py_a78a3361d0d025481aa6c00d9700e6028}{miny}},\ \mbox{\hyperlink{convert__dataset__to__yolo_8py_a9ed3e2d6743288bd0d2bd665bd313f3d}{maxx}},\ \mbox{\hyperlink{convert__dataset__to__yolo_8py_a249b7c800ca83d50b15a3519e3c2cf0e}{maxy}})}
+\DoxyCodeLine{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ norm\ =\ normalize\_bbox(bbox,\ w,\ h)}
+\DoxyCodeLine{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ norm:}
+\DoxyCodeLine{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ cid\ =\ CLASS\_TO\_ID[class\_name]}
+\DoxyCodeLine{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ lines.append(f\textcolor{stringliteral}{"{}\{cid\}\ \{norm[0]:.6f\}\ \{norm[1]:.6f\}\ \{norm[2]:.6f\}\ \{norm[3]:.6f\}"{}})}
+\DoxyCodeLine{\ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{continue}}
+\DoxyCodeLine{\ \ \ \ \ \ \ \ \textcolor{keywordflow}{try}:}
+\DoxyCodeLine{\ \ \ \ \ \ \ \ \ \ \ \ \textcolor{keywordflow}{if}\ len(verts)\ ==\ 2\ and\ isinstance(verts[0],\ (list,\ tuple)):}
+\DoxyCodeLine{\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ minx}
+
+\end{DoxyCode}
+\Hypertarget{convert__dataset__to__yolo_8py_a78a3361d0d025481aa6c00d9700e6028}\label{convert__dataset__to__yolo_8py_a78a3361d0d025481aa6c00d9700e6028} 
+\index{convert\_dataset\_to\_yolo.py@{convert\_dataset\_to\_yolo.py}!miny@{miny}}
+\index{miny@{miny}!convert\_dataset\_to\_yolo.py@{convert\_dataset\_to\_yolo.py}}
+\doxysubsubsection{\texorpdfstring{miny}{miny}}
+{\footnotesize\ttfamily miny = \mbox{\hyperlink{convert__dataset__to__yolo_8py_ac0a3893e46674bbe04b9d5a06d642a41}{float}}(verts\mbox{[}0\mbox{]}\mbox{[}0\mbox{]})}
+

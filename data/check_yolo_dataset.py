@@ -1,25 +1,56 @@
 #!/usr/bin/env python3
-"""
-check_yolo_dataset_recursive.py
-
-Versione aggiornata dello script di verifica che:
-- scansiona ricorsivamente images/<split>/...
-- per ogni immagine trova labels/<split>/stesso/rel/path/file.txt
-- disegna le bbox e salva output preservando la gerarchia relativa in output/
-"""
+/**
+ * @file check_yolo_dataset.py
+ * @brief Utility script to visually verify YOLO-format datasets.
+ *
+ * This script recursively scans a YOLO dataset structure and checks
+ * consistency between images and corresponding label files.
+ *
+ * For a random subset of images:
+ *  - Loads the image
+ *  - Parses YOLO bounding box annotations
+ *  - Converts normalized coordinates to pixel coordinates
+ *  - Draws bounding boxes and class labels
+ *  - Saves annotated images preserving folder hierarchy
+ *
+ * Intended for dataset debugging and annotation validation.
+ */
 import os
 import random
 import argparse
 from PIL import Image, ImageDraw, ImageFont
 import yaml
-
+/**
+ * @brief Supported image file extensions for dataset scanning.
+ */
 IMG_EXTS = (".jpg", ".jpeg", ".png", ".bmp")
-
+/**
+ * @brief Load class names from YOLO data.yaml file.
+ *
+ * Parses the YAML configuration file and extracts the list
+ * of class names defined under the "names" field.
+ *
+ * @param data_yaml Path to data.yaml file.
+ * @return List of class names.
+ */
 def load_classes(data_yaml):
     with open(data_yaml, "r") as f:
         data = yaml.safe_load(f)
     return data["names"]
-
+/**
+ * @brief Convert YOLO normalized bounding box to pixel coordinates.
+ *
+ * YOLO format: (center_x, center_y, width, height) normalized in [0,1].
+ * Converts them to absolute pixel coordinates (minx, miny, maxx, maxy).
+ *
+ * @param cx Normalized center X.
+ * @param cy Normalized center Y.
+ * @param w Normalized width.
+ * @param h Normalized height.
+ * @param img_w Image width in pixels.
+ * @param img_h Image height in pixels.
+ * @return Tuple (minx, miny, maxx, maxy) in pixel coordinates.
+ */
 def yolo_to_pixel(cx, cy, w, h, img_w, img_h):
     bw = w * img_w
     bh = h * img_h
@@ -28,7 +59,15 @@ def yolo_to_pixel(cx, cy, w, h, img_w, img_h):
     maxx = minx + bw
     maxy = miny + bh
     return minx, miny, maxx, maxy
-
+/**
+ * @brief Recursively collect all images under a root directory.
+ *
+ * Traverses images/<split>/... and preserves relative paths
+ * to allow mirrored output directory generation.
+ *
+ * @param img_root Root directory containing images.
+ * @return List of tuples (full_path, relative_path).
+ */
 def collect_images_recursive(img_root):
     imgs = []
     for root, _, files in os.walk(img_root):
@@ -38,7 +77,16 @@ def collect_images_recursive(img_root):
                 rel = os.path.relpath(full, img_root)
                 imgs.append((full, rel))
     return imgs
-
+/**
+ * @brief Main dataset verification routine.
+ *
+ * Randomly samples images from the specified dataset split,
+ * verifies the existence and format of corresponding label files,
+ * draws bounding boxes and class names, and saves annotated
+ * images in the output directory.
+ *
+ * @param args Parsed command-line arguments.
+ */
 def main(args):
     random.seed(42)
 
@@ -114,7 +162,11 @@ def main(args):
 
     print("Debug completato")
     print(f"Immagini annotate salvate in: {args.output}")
-
+/**
+ * @brief Script entry point.
+ *
+ * Parses command-line arguments and launches dataset verification.
+ */
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--dataset", default="dataset_yolo", help="Root dataset YOLO")

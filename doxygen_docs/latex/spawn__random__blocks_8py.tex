@@ -1,0 +1,57 @@
+\doxysection{/home/giuntinux/trento\+\_\+lab\+\_\+home/ros\+\_\+ws/src/lab\+\_\+myproject/scripts/spawn\+\_\+random\+\_\+blocks.py File Reference}
+\hypertarget{spawn__random__blocks_8py}{}\label{spawn__random__blocks_8py}\index{/home/giuntinux/trento\_lab\_home/ros\_ws/src/lab\_myproject/scripts/spawn\_random\_blocks.py@{/home/giuntinux/trento\_lab\_home/ros\_ws/src/lab\_myproject/scripts/spawn\_random\_blocks.py}}
+
+
+Random spawning of rigid blocks in Gazebo for pick-\/and-\/place experiments.  
+
+
+{\ttfamily import rospy;}\newline
+{\ttfamily import "{}ur5"{};}\newline
+{\ttfamily import "{}x\+\_\+min"{};}\newline
+{\ttfamily import "{}x\+\_\+max"{};}\newline
+{\ttfamily import "{}y\+\_\+min"{};}\newline
+{\ttfamily import "{}y\+\_\+max"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}/ros\+\_\+ws/src/lab\+\_\+myproject/models"{};}\newline
+{\ttfamily import "{}model.\+sdf"{};}\newline
+{\ttfamily import $<$ MIN\+\_\+\+RXY or rxy $>$;}\newline
+{\ttfamily import "{}world"{};}\newline
+{\ttfamily import "{}/gazebo/get\+\_\+physics\+\_\+properties"{};}\newline
+{\ttfamily import "{}/gazebo/set\+\_\+physics\+\_\+properties"{};}\newline
+{\ttfamily import "{}Gazebo physics forced\+: dt=\%.\+4f rate=\%.\+0f iters=\%d ERP=\%.\+3f CFM=\%.\+1e"{};}\newline
+{\ttfamily import "{}Physics not changed\+: \%s"{};}\newline
+{\ttfamily import "{}spawn\+\_\+random\+\_\+blocks"{};}\newline
+{\ttfamily import "{}/gazebo/spawn\+\_\+sdf\+\_\+model"{};}\newline
+{\ttfamily import "{}/gazebo/get\+\_\+model\+\_\+state"{};}\newline
+{\ttfamily import "{}No models found in \%s"{};}\newline
+{\ttfamily import "{}Available models\+: \%s"{};}\newline
+{\ttfamily import "{}Spawn area base\+\_\+link\+: X\%s Y\%s rxy\mbox{[}\%.\+2f,\%.\+2f\mbox{]}"{};}\newline
+{\ttfamily import "{}NO-\/\+GO rect\+: \%s"{};}\newline
+{\ttfamily import "{}\{model\}\+\_\+\{uuid.\+uuid4().\+hex\mbox{[}\+:8\mbox{]}\}"{};}\newline
+{\ttfamily import "{}r"{};}\newline
+Include dependency graph for spawn\+\_\+random\+\_\+blocks.\+py\+:
+\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{spawn__random__blocks_8py__incl}
+\end{center}
+\end{figure}
+
+
+\doxysubsection{Detailed Description}
+Random spawning of rigid blocks in Gazebo for pick-\/and-\/place experiments. 
+
+This script populates the Gazebo simulation environment with rigid, non-\/deformable blocks randomly placed on a table surface. Spawned objects are guaranteed to lie within the robot reachable workspace, avoid predefined no-\/go regions, and not overlap with each other.
+
+Object poses are sampled in the robot base frame and converted to the Gazebo world frame using the robot model state. Intended for automated testing and benchmarking of perception, planning, and manipulation pipelines.
+
+Features\+:
+\begin{DoxyItemize}
+\item Random sampling in the base\+\_\+link frame
+\item Reachability and exclusion zone constraints
+\item Non-\/overlapping object placement
+\item On-\/the-\/fly adjustment of Gazebo physics parameters
+\item Support for multiple block models loaded from disk
+\end{DoxyItemize}
+
+This script does not publish perception outputs and is intended for offline environment setup only. 

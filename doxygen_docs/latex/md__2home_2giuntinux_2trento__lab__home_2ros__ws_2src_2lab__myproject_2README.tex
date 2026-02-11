@@ -1,0 +1,103 @@
+\chapter{Pick and Place}
+\hypertarget{md__2home_2giuntinux_2trento__lab__home_2ros__ws_2src_2lab__myproject_2README}{}\label{md__2home_2giuntinux_2trento__lab__home_2ros__ws_2src_2lab__myproject_2README}\index{Pick and Place@{Pick and Place}}
+\label{md__2home_2giuntinux_2trento__lab__home_2ros__ws_2src_2lab__myproject_2README_autotoc_md7}%
+\Hypertarget{md__2home_2giuntinux_2trento__lab__home_2ros__ws_2src_2lab__myproject_2README_autotoc_md7}%
+For this project we have used servicies in Locosim. please follow the instuction here to configure the workplace\+:
+
+\href{https://github.com/idra-lab/locosim.git}{\texttt{ https\+://github.\+com/idra-\/lab/locosim.\+git}}
+
+clone this repo into ros\+\_\+ws/src in locosim.\hypertarget{md__2home_2giuntinux_2trento__lab__home_2ros__ws_2src_2lab__myproject_2README_autotoc_md8}{}\doxysection{\texorpdfstring{Description}{Description}}\label{md__2home_2giuntinux_2trento__lab__home_2ros__ws_2src_2lab__myproject_2README_autotoc_md8}
+A number of objects (e.\+g., mega-\/blocks) are stored without any specific order on a stand (initial stand) located within the workspace of a robotic manipulator. The manipulator is an anthropomorphic arm, with a spherical wrist and a two-\/fingered gripper as end-\/effector. The objects can belong to different classes but have a known geometry (coded in the STL files). The objective of the project is to use the manipulator to pick the objects in sequence and to position them on a different stand according to a specified order (final stand). A calibrated 3D sensor is used to locate the different objects and to detect their position in the initial stand.\hypertarget{md__2home_2giuntinux_2trento__lab__home_2ros__ws_2src_2lab__myproject_2README_autotoc_md9}{}\doxysection{\texorpdfstring{Robot}{Robot}}\label{md__2home_2giuntinux_2trento__lab__home_2ros__ws_2src_2lab__myproject_2README_autotoc_md9}
+UR5 (6-\/Do\+Fs arm)
+
+
+
+with a soft two fingers gripper
+
+\hypertarget{md__2home_2giuntinux_2trento__lab__home_2ros__ws_2src_2lab__myproject_2README_autotoc_md10}{}\doxysection{\texorpdfstring{Simulation}{Simulation}}\label{md__2home_2giuntinux_2trento__lab__home_2ros__ws_2src_2lab__myproject_2README_autotoc_md10}
+physics simulation with Gazebo
+
+\hypertarget{md__2home_2giuntinux_2trento__lab__home_2ros__ws_2src_2lab__myproject_2README_autotoc_md11}{}\doxysection{\texorpdfstring{To run}{To run}}\label{md__2home_2giuntinux_2trento__lab__home_2ros__ws_2src_2lab__myproject_2README_autotoc_md11}
+shell 1\+:
+
+do everything to launch ur5\+\_\+generic.\+py with the sources, exports
+
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{source\ /opt/ros/noetic/setup.bash}
+
+\end{DoxyCode}
+ 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{source\ \string~/ros\_ws/devel/setup.bash}
+
+\end{DoxyCode}
+ 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{export\ ROS\_MASTER\_URI=http://localhost:11311}
+
+\end{DoxyCode}
+ 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{export\ ROS\_HOSTNAME=localhost}
+
+\end{DoxyCode}
+ shell 2\+: 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{roscore}
+
+\end{DoxyCode}
+ shell 3\+:
+
+task\+\_\+planning/motion\+\_\+planning\+: 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{rosparam\ set\ /robot\_description\ "{}\$(rosparam\ get\ /ur5/robot\_description)"{}}
+
+\end{DoxyCode}
+ 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{roslaunch\ lab\_myproject\ pick\_place\_system.launch}
+
+\end{DoxyCode}
+ shell 4\+:
+
+spawn blocks\+: 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{export\ GAZEBO\_MODEL\_PATH=\$GAZEBO\_MODEL\_PATH:/root/ros\_ws/src/lab\_myproject/models}
+
+\end{DoxyCode}
+ 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{rosrun\ lab\_myproject\ spawn\_random\_blocks.py}
+
+\end{DoxyCode}
+
+
+shell 5\+:
+
+vision node\+: 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{source\ /root/venv/bin/activate}
+
+\end{DoxyCode}
+ 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{source\ /opt/ros/noetic/setup.bash}
+
+\end{DoxyCode}
+ 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{source\ /root/ros\_ws/devel/setup.bash}
+
+\end{DoxyCode}
+ 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{rosrun\ lab\_myproject\ perception\_6d\_node.py\ \_publish\_on\_request:=true\ \_yaw\_mode:=short\ \_yaw\_snap\_enable:=true\ \_yaw\_snap\_step:=1.57079632679\ \_xy\_use\_rect\_center:=true\ \_xy\_center\_blend:=0.65}
+
+\end{DoxyCode}
+
+
+to see the prediction on RVIZ u will need to press\+: Add → Image Topic\+: /perception/debug/image\+\_\+raw Transport hint\+: raw Queue size\+: 2\hypertarget{md__2home_2giuntinux_2trento__lab__home_2ros__ws_2src_2lab__myproject_2README_autotoc_md12}{}\doxysection{\texorpdfstring{Report}{Report}}\label{md__2home_2giuntinux_2trento__lab__home_2ros__ws_2src_2lab__myproject_2README_autotoc_md12}
+Project report\+: \href{https://github.com/user-attachments/files/25233493/Pick_and_Place_report.1.pdf}{\texttt{ Download PDF}}
+
+Demo video\+: \href{https://youtu.be/f1nDkgo8dq8?si=jhaF0ubgvUTynl-L}{\texttt{ https\+://youtu.\+be/f1n\+Dkgo8dq8?si=jha\+F0ubgv\+UTynl-\/L}} 

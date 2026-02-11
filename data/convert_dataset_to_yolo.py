@@ -1,10 +1,22 @@
 #!/usr/bin/env python3
-"""
-convert_dataset_to_yolo_fix.py
-
-Versione corretta che preserva la gerarchia relativa (assignX/sceneY)
-nella cartella di output per evitare sovrascritture di file con lo stesso nome.
-"""
+/**
+ * @file convert_dataset_to_yolo.py
+ * @brief Converts a custom annotated dataset into YOLO format.
+ *
+ * This script scans a dataset containing JSON annotations (view=*.json)
+ * and corresponding images, extracts object bounding boxes, converts them
+ * into normalized YOLO format, and generates:
+ *
+ * - images/train and images/val directories
+ * - labels/train and labels/val directories
+ * - a data.yaml configuration file
+ *
+ * The relative directory structure (e.g., assignX/sceneY) is preserved
+ * in order to avoid filename collisions.
+ *
+ * Supports optional scene-based splitting to ensure that all views
+ * from the same scene belong to the same dataset split.
+ */
 import os
 import json
 import random
@@ -12,19 +24,47 @@ import shutil
 import argparse
 from collections import defaultdict
 from PIL import Image
-
+/**
+ * @brief List of supported object class names.
+ *
+ * The index of each class in this list corresponds to its YOLO class ID.
+ */
 CLASS_NAMES = [
     "X1-Y1-Z2","X1-Y2-Z1","X1-Y2-Z2","X1-Y2-Z2-CHAMFER","X1-Y2-Z2-TWINFILLET",
     "X1-Y3-Z2","X1-Y3-Z2-FILLET","X1-Y4-Z1","X1-Y4-Z2","X2-Y2-Z2","X2-Y2-Z2-FILLET",
 ]
+/**
+ * @brief Mapping from class name to numeric YOLO class ID.
+ */
 CLASS_TO_ID = {n: i for i, n in enumerate(CLASS_NAMES)}
+/**
+ * @brief Possible JSON keys that may contain class information.
+ *
+ * The script searches these keys when extracting object labels
+ * from annotation files.
+ */
 POSSIBLE_CLASS_KEYS = ['label', 'class', 'y', 'name', 'type']
-
+/**
+ * @brief Computes an axis-aligned bounding box from polygon vertices.
+ *
+ * @param vertices List of (x, y) points.
+ * @return Tuple (min_x, min_y, max_x, max_y).
+ */
 def bbox_from_vertices(vertices):
     xs = [float(v[0]) for v in vertices]
     ys = [float(v[1]) for v in vertices]
     return min(xs), min(ys), max(xs), max(ys)
-
+/**
+ * @brief Converts a pixel-space bounding box to YOLO normalized format.
+ *
+ * Clamps coordinates inside image boundaries and returns:
+ * (center_x, center_y, width, height) normalized in [0,1].
+ *
+ * @param bbox Tuple (min_x, min_y, max_x, max_y) in pixels.
+ * @param w Image width in pixels.
+ * @param h Image height in pixels.
+ * @return Normalized YOLO bbox or None if invalid.
+ */
 def normalize_bbox(bbox, w, h):
     minx, miny, maxx, maxy = bbox
     minx = max(0.0, min(minx, w - 1.0))
@@ -38,7 +78,14 @@ def normalize_bbox(bbox, w, h):
     cx = (minx + bw / 2.0) / w
     cy = (miny + bh / 2.0) / h
     return cx, cy, bw / w, bh / h
-
+/**
+ * @brief Extracts the class name from a JSON object entry.
+ *
+ * Searches predefined keys and checks for valid class names.
+ *
+ * @param obj Dictionary representing one annotated object.
+ * @return Class name string or None if not found.
+ */
 def extract_class_from_obj(obj):
     for k in POSSIBLE_CLASS_KEYS:
         if k in obj and isinstance(obj[k], str):
@@ -47,7 +94,20 @@ def extract_class_from_obj(obj):
         if isinstance(v, str) and v in CLASS_TO_ID:
             return v
     return None
-
+/**
+ * @brief Processes a single JSON annotation file and generates a YOLO label file.
+ *
+ * For each valid object in the JSON file:
+ * - Extracts class name
+ * - Computes bounding box
+ * - Normalizes to YOLO format
+ * - Writes results into a .txt label file
+ *
+ * @param json_path Path to the input JSON annotation.
+ * @param img_path Path to the associated image.
+ * @param label_out Output path for the YOLO label file.
+ * @return True if at least one valid label was generated, False otherwise.
+ */
 def process_view(json_path, img_path, label_out):
     try:
         img = Image.open(img_path)
@@ -103,7 +163,18 @@ def process_view(json_path, img_path, label_out):
             f.write("\n".join(lines) + "\n")
         return True
     return False
-
+/**
+ * @brief Collects dataset samples from the input directory.
+ *
+ * Searches recursively for view=*.json files and their corresponding images.
+ *
+ * If split_by_scene is enabled, samples are grouped by scene to ensure
+ * consistent train/validation splitting.
+ *
+ * @param input_root Root directory of the dataset.
+ * @param split_by_scene Whether to group samples by scene.
+ * @return (groups, grouped_flag)
+ */
 def collect_samples(input_root, split_by_scene=False):
     samples = []
     for root, _, files in os.walk(input_root):
@@ -138,7 +209,16 @@ def collect_samples(input_root, split_by_scene=False):
     else:
         # return flat list of tuples (json, img, rel_dir)
         return samples, False
-
+/**
+ * @brief Exports dataset samples into YOLO directory structure.
+ *
+ * Creates train/val splits, preserves relative directories,
+ * generates image and label files, and writes data.yaml.
+ *
+ * @param groups List of samples or grouped samples.
+ * @param grouped Indicates whether grouping by scene is enabled.
+ * @param args Parsed command-line arguments.
+ */
 def export_samples_grouped(groups, grouped, args):
     img_out_root = os.path.join(args.output, 'images')
     lbl_out_root = os.path.join(args.output, 'labels')
@@ -211,7 +291,12 @@ def export_samples_grouped(groups, grouped, args):
     print(f"Label generate: {cnt_labels}")
     print("Output:", os.path.abspath(args.output))
     print("data.yaml ->", yaml_path)
-
+/**
+ * @brief Entry point of the dataset conversion script.
+ *
+ * Parses command-line arguments, collects dataset samples,
+ * and triggers export to YOLO format.
+ */
 def main():
     p = argparse.ArgumentParser()
     p.add_argument('--input', '-i', default='.', help='Cartella radice dei dati (default current dir)')

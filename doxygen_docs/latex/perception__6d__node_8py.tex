@@ -1,0 +1,215 @@
+\doxysection{/home/giuntinux/trento\+\_\+lab\+\_\+home/ros\+\_\+ws/src/lab\+\_\+myproject/scripts/perception\+\_\+6d\+\_\+node.py File Reference}
+\hypertarget{perception__6d__node_8py}{}\label{perception__6d__node_8py}\index{/home/giuntinux/trento\_lab\_home/ros\_ws/src/lab\_myproject/scripts/perception\_6d\_node.py@{/home/giuntinux/trento\_lab\_home/ros\_ws/src/lab\_myproject/scripts/perception\_6d\_node.py}}
+
+
+ROS node for 6D pose estimation of rigid blocks using RGB-\/D and YOLOv8.  
+
+
+{\ttfamily import os;}\newline
+{\ttfamily import "{}OMP\+\_\+\+NUM\+\_\+\+THREADS"{};}\newline
+{\ttfamily import "{}1"{};}\newline
+{\ttfamily import "{}MKL\+\_\+\+NUM\+\_\+\+THREADS"{};}\newline
+{\ttfamily import "{}OPENBLAS\+\_\+\+NUM\+\_\+\+THREADS"{};}\newline
+{\ttfamily import "{}NUMEXPR\+\_\+\+NUM\+\_\+\+THREADS"{};}\newline
+{\ttfamily import "{}/root/ros\+\_\+ws/src/lab\+\_\+myproject/data/runs/detect/train/weights/best.\+pt"{};}\newline
+{\ttfamily import "{}/ur5/zed\+\_\+node/left/image\+\_\+rect\+\_\+color"{};}\newline
+{\ttfamily import "{}/ur5/zed\+\_\+node/depth/depth\+\_\+registered"{};}\newline
+{\ttfamily import "{}/ur5/zed\+\_\+node/left/camera\+\_\+info"{};}\newline
+{\ttfamily import "{}base\+\_\+link"{};}\newline
+{\ttfamily import "{}perception\+\_\+6d\+\_\+node"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}model\+\_\+path"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}color\+\_\+topic"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}depth\+\_\+topic"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}caminfo\+\_\+topic"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}frame\+\_\+base"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}conf\+\_\+thresh"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}publish\+\_\+on\+\_\+request"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}request\+\_\+topic"{};}\newline
+{\ttfamily import "{}/vision/request\+\_\+object"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}request\+\_\+timeout"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}req\+\_\+collect\+\_\+N"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}req\+\_\+min\+\_\+frames"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}req\+\_\+max\+\_\+wait"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}req\+\_\+cooldown"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}min\+\_\+pub\+\_\+period"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}table\+\_\+roi\+\_\+u0"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}table\+\_\+roi\+\_\+u1"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}table\+\_\+roi\+\_\+v0"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}table\+\_\+roi\+\_\+v1"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}use\+\_\+table\+\_\+z"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}table\+\_\+z\+\_\+tol"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}use\+\_\+obj\+\_\+range\+\_\+filter"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}table\+\_\+obj\+\_\+gap"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}table\+\_\+obj\+\_\+max"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}use\+\_\+table\+\_\+xy"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}table\+\_\+x\+\_\+min"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}table\+\_\+x\+\_\+max"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}table\+\_\+y\+\_\+min"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}table\+\_\+y\+\_\+max"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}robot\+\_\+roi\+\_\+enable"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}robot\+\_\+roi\+\_\+u0"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}robot\+\_\+roi\+\_\+u1"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}robot\+\_\+roi\+\_\+v0"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}robot\+\_\+roi\+\_\+v1"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}bbox\+\_\+shrink"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}xy\+\_\+inlier\+\_\+r"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}top\+\_\+keep\+\_\+percentile"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}dense\+\_\+bin\+\_\+size"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}grasp\+\_\+bias\+\_\+x"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}grasp\+\_\+bias\+\_\+y"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}estimate\+\_\+yaw"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}yaw\+\_\+mode"{};}\newline
+{\ttfamily import "{}short"{};}\newline
+{\ttfamily import "{}long"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}yaw\+\_\+tool\+\_\+offset"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}yaw\+\_\+snap\+\_\+enable"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}yaw\+\_\+snap\+\_\+step"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}yaw\+\_\+outlier\+\_\+deg"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}yaw\+\_\+use\+\_\+rect"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}yaw\+\_\+rect\+\_\+min\+\_\+aspect"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}yaw\+\_\+rect\+\_\+min\+\_\+pts"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}yaw\+\_\+use\+\_\+pca"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}yaw\+\_\+min\+\_\+anisotropy"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}yaw\+\_\+pca\+\_\+min\+\_\+pts"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}yaw\+\_\+use\+\_\+obj\+\_\+points"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}yaw\+\_\+smooth"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}yaw\+\_\+smooth\+\_\+alpha"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}xy\+\_\+use\+\_\+rect\+\_\+center"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}xy\+\_\+rect\+\_\+center\+\_\+min\+\_\+pts"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}xy\+\_\+center\+\_\+blend"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}debug\+\_\+enable"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}debug\+\_\+print\+\_\+every"{};}\newline
+{\ttfamily import "{}\texorpdfstring{$\sim$}{\string~}latch\+\_\+vision"{};}\newline
+{\ttfamily import "{}/vision/object\+\_\+pose"{};}\newline
+{\ttfamily import "{}/vision/object\+\_\+rpy"{};}\newline
+{\ttfamily import "{}/vision/object\+\_\+name"{};}\newline
+{\ttfamily import "{}/vision/object\+\_\+uid"{};}\newline
+{\ttfamily import "{}/perception/debug/image\+\_\+raw"{};}\newline
+{\ttfamily import "{}\mbox{[}perception6d\mbox{]} model=\%s"{};}\newline
+{\ttfamily import "{}\mbox{[}perception6d\mbox{]} color=\%s"{};}\newline
+{\ttfamily import "{}\mbox{[}perception6d\mbox{]} depth=\%s"{};}\newline
+{\ttfamily import "{}\mbox{[}perception6d\mbox{]} caminfo=\%s"{};}\newline
+{\ttfamily import "{}\mbox{[}perception6d\mbox{]} base=\%s conf=\%.\+2f"{};}\newline
+{\ttfamily import "{}\mbox{[}perception6d\mbox{]} request=\%s topic=\%s timeout=\%.\+1fs N=\%d min=\%d max\+\_\+wait=\%.\+2fs cooldown=\%.\+2fs latch\+\_\+vision=\%s"{};}\newline
+{\ttfamily import "{}\mbox{[}perception6d\mbox{]} bbox\+\_\+shrink=\%.\+2f top\%\%=\%.\+1f dense\+\_\+bin=\%.\+3f xy\+\_\+r=\%.\+3f bias=(\%.\+3f,\%.\+3f)"{};}\newline
+{\ttfamily import "{}\mbox{[}perception6d\mbox{]} yaw estimate=\%s mode=\%s tool\+\_\+offset=\%.\+3f snap=\%s step=\%.\+3f outlier=\%.\+1fdeg rect=\%s asp$>$=\%.\+2f pca=\%s anis$>$=\%.\+2f use\+\_\+obj=\%s smooth=\%s"{};}\newline
+{\ttfamily import "{}\mbox{[}perception6d\mbox{]} xy\+\_\+use\+\_\+rect\+\_\+center=\%s xy\+\_\+center\+\_\+blend=\%.\+2f xy\+\_\+rect\+\_\+center\+\_\+min\+\_\+pts=\%d"{};}\newline
+{\ttfamily import "{}\mbox{[}perception6d\mbox{]} request received -\/$>$ median over \%d frames (min=\%d, max\+\_\+wait=\%.\+2fs, timeout \%.\+1fs)"{};}\newline
+{\ttfamily import "{}fx"{};}\newline
+{\ttfamily import "{}fy"{};}\newline
+{\ttfamily import "{}cx"{};}\newline
+{\ttfamily import "{}cy"{};}\newline
+{\ttfamily import "{}w"{};}\newline
+{\ttfamily import "{}h"{};}\newline
+{\ttfamily import "{}\mbox{[}perception6d\mbox{]} caminfo fx=\%.\+2f fy=\%.\+2f cx=\%.\+2f cy=\%.\+2f (w=\%d h=\%d)"{};}\newline
+{\ttfamily import "{}bgr8"{};}\newline
+{\ttfamily import "{}encoding"{};}\newline
+{\ttfamily import "{}32\+FC1"{};}\newline
+{\ttfamily import "{}passthrough"{};}\newline
+{\ttfamily import "{}16\+UC1"{};}\newline
+{\ttfamily import "{}\mbox{[}perception6d\mbox{]} K FIX\+: raw(cx,cy)=(\%.\+1f,\%.\+1f) expect=(\%.\+1f,\%.\+1f) -\/$>$ s=\%.\+3f new(cx,cy)=(\%.\+1f,\%.\+1f)"{};}\newline
+\doxysubsubsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+\mbox{\hyperlink{perception__6d__node_8py_a2fb1c5cf58867b5bbc9a1b145a86f3a0}{y}}
+\item 
+\mbox{\hyperlink{perception__6d__node_8py_aa7191d181575c85a780910cc176d5ef9}{u1c}}
+\item 
+\mbox{\hyperlink{perception__6d__node_8py_a58c82c0271a7fdd56bf12794d37d43cc}{v1c}}
+\item 
+b in enumerate(boxes\+\_\+xyxy) \mbox{\hyperlink{perception__6d__node_8py_abc3dbbbb64ca56ad99c7b689c5553e42}{y1c}} = int(b\mbox{[}1\mbox{]})
+\item 
+\mbox{\hyperlink{perception__6d__node_8py_a703fbd133b5a456cd2593fae70e7a0d7}{x2c}} = int(b\mbox{[}2\mbox{]})
+\item 
+\mbox{\hyperlink{perception__6d__node_8py_a8708c1e98f573ba7bd1af6eb806344cd}{y2c}}
+\item 
+\mbox{\hyperlink{perception__6d__node_8py_a5873b6a9b0ddd52a2ec919dadc52f414}{x2d}}
+\item 
+\mbox{\hyperlink{perception__6d__node_8py_a1a9c864d66d13fdbac14de12877428d7}{y2d}}
+\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+ROS node for 6D pose estimation of rigid blocks using RGB-\/D and YOLOv8. 
+
+This ROS node performs perception for pick-\/and-\/place tasks by combining deep-\/learning-\/based object detection using YOLOv8 on RGB images with geometric processing of depth data.
+
+It estimates the 3D position and yaw orientation of rigid, non-\/deformable blocks placed on a planar surface. Detected object poses are expressed in the robot base frame and published to the /vision namespace for consumption by task planning and motion planning modules.
+
+Main features\+:
+\begin{DoxyItemize}
+\item YOLOv8 object detection on RGB images
+\item Robust depth sampling inside bounding boxes
+\item Table plane height estimation
+\item 3D position estimation using robust statistics
+\item Yaw estimation using geometric analysis (min\+Area\+Rect / PCA)
+\item Optional request-\/based pose publication 
+\end{DoxyItemize}
+
+\doxysubsection{Variable Documentation}
+\Hypertarget{perception__6d__node_8py_aa7191d181575c85a780910cc176d5ef9}\label{perception__6d__node_8py_aa7191d181575c85a780910cc176d5ef9} 
+\index{perception\_6d\_node.py@{perception\_6d\_node.py}!u1c@{u1c}}
+\index{u1c@{u1c}!perception\_6d\_node.py@{perception\_6d\_node.py}}
+\doxysubsubsection{\texorpdfstring{u1c}{u1c}}
+{\footnotesize\ttfamily u1c}
+
+{\bfseries Initial value\+:}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{=\ int(round(u1d\ *\ sx))}
+\DoxyCodeLine{\ \ \ \ \ \ \ \ \ \ \ \ v0c\ =\ int(round(v0d\ *\ sy))}
+
+\end{DoxyCode}
+\Hypertarget{perception__6d__node_8py_a58c82c0271a7fdd56bf12794d37d43cc}\label{perception__6d__node_8py_a58c82c0271a7fdd56bf12794d37d43cc} 
+\index{perception\_6d\_node.py@{perception\_6d\_node.py}!v1c@{v1c}}
+\index{v1c@{v1c}!perception\_6d\_node.py@{perception\_6d\_node.py}}
+\doxysubsubsection{\texorpdfstring{v1c}{v1c}}
+{\footnotesize\ttfamily v1c}
+
+\Hypertarget{perception__6d__node_8py_a703fbd133b5a456cd2593fae70e7a0d7}\label{perception__6d__node_8py_a703fbd133b5a456cd2593fae70e7a0d7} 
+\index{perception\_6d\_node.py@{perception\_6d\_node.py}!x2c@{x2c}}
+\index{x2c@{x2c}!perception\_6d\_node.py@{perception\_6d\_node.py}}
+\doxysubsubsection{\texorpdfstring{x2c}{x2c}}
+{\footnotesize\ttfamily x2c = int(b\mbox{[}2\mbox{]})}
+
+\Hypertarget{perception__6d__node_8py_a5873b6a9b0ddd52a2ec919dadc52f414}\label{perception__6d__node_8py_a5873b6a9b0ddd52a2ec919dadc52f414} 
+\index{perception\_6d\_node.py@{perception\_6d\_node.py}!x2d@{x2d}}
+\index{x2d@{x2d}!perception\_6d\_node.py@{perception\_6d\_node.py}}
+\doxysubsubsection{\texorpdfstring{x2d}{x2d}}
+{\footnotesize\ttfamily x2d}
+
+{\bfseries Initial value\+:}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{=\ int(round(\mbox{\hyperlink{perception__6d__node_8py_a703fbd133b5a456cd2593fae70e7a0d7}{x2c}}\ *\ sx\_cd))}
+\DoxyCodeLine{\ \ \ \ \ \ \ \ \ \ \ \ y1d\ =\ int(round(\mbox{\hyperlink{perception__6d__node_8py_abc3dbbbb64ca56ad99c7b689c5553e42}{y1c}}\ *\ sy\_cd))}
+
+\end{DoxyCode}
+\Hypertarget{perception__6d__node_8py_a2fb1c5cf58867b5bbc9a1b145a86f3a0}\label{perception__6d__node_8py_a2fb1c5cf58867b5bbc9a1b145a86f3a0} 
+\index{perception\_6d\_node.py@{perception\_6d\_node.py}!y@{y}}
+\index{y@{y}!perception\_6d\_node.py@{perception\_6d\_node.py}}
+\doxysubsubsection{\texorpdfstring{y}{y}}
+{\footnotesize\ttfamily y}
+
+\Hypertarget{perception__6d__node_8py_abc3dbbbb64ca56ad99c7b689c5553e42}\label{perception__6d__node_8py_abc3dbbbb64ca56ad99c7b689c5553e42} 
+\index{perception\_6d\_node.py@{perception\_6d\_node.py}!y1c@{y1c}}
+\index{y1c@{y1c}!perception\_6d\_node.py@{perception\_6d\_node.py}}
+\doxysubsubsection{\texorpdfstring{y1c}{y1c}}
+{\footnotesize\ttfamily b in enumerate (boxes\+\_\+xyxy) y1c = int(b\mbox{[}1\mbox{]})}
+
+\Hypertarget{perception__6d__node_8py_a8708c1e98f573ba7bd1af6eb806344cd}\label{perception__6d__node_8py_a8708c1e98f573ba7bd1af6eb806344cd} 
+\index{perception\_6d\_node.py@{perception\_6d\_node.py}!y2c@{y2c}}
+\index{y2c@{y2c}!perception\_6d\_node.py@{perception\_6d\_node.py}}
+\doxysubsubsection{\texorpdfstring{y2c}{y2c}}
+{\footnotesize\ttfamily y2c}
+
+\Hypertarget{perception__6d__node_8py_a1a9c864d66d13fdbac14de12877428d7}\label{perception__6d__node_8py_a1a9c864d66d13fdbac14de12877428d7} 
+\index{perception\_6d\_node.py@{perception\_6d\_node.py}!y2d@{y2d}}
+\index{y2d@{y2d}!perception\_6d\_node.py@{perception\_6d\_node.py}}
+\doxysubsubsection{\texorpdfstring{y2d}{y2d}}
+{\footnotesize\ttfamily y2d}
+
+{\bfseries Initial value\+:}
+\begin{DoxyCode}{0}
+\DoxyCodeLine{=\ int(round(\mbox{\hyperlink{perception__6d__node_8py_a8708c1e98f573ba7bd1af6eb806344cd}{y2c}}\ *\ sy\_cd))}
+\DoxyCodeLine{\ \ \ \ \ \ \ \ \ \ \ \ x1d\ =\ max(0,\ min(wd\ -\/\ 1,\ x1d))}
+
+\end{DoxyCode}
