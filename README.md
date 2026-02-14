@@ -89,7 +89,17 @@ source /root/venv/bin/activate
  source /root/ros_ws/devel/setup.bash
 ```
 ```bash
- rosrun lab_myproject perception_6d_node.py _publish_on_request:=true _yaw_mode:=short _yaw_snap_enable:=true _yaw_snap_step:=1.57079632679 _xy_use_rect_center:=true _xy_center_blend:=0.65
+ rosrun lab_myproject perception_6d_node.py \
+  _publish_on_request:=true \
+  _yaw_mode:=short \
+  _yaw_snap_enable:=true \
+  _yaw_snap_step:=1.57079632679 \
+  _xy_use_rect_center:=true \
+  _xy_center_blend:=0.65 \
+  _conf_thresh:=0.40 \
+  _latch_vision:=false \
+  _use_table_xy:=false
+
 ```
 
 to see the prediction on RVIZ u will need to press:
