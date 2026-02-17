@@ -48,6 +48,9 @@ shell 1:
  source ~/ros_ws/devel/setup.bash
 ```
 ```bash
+export ROS_PACKAGE_PATH=/root/ros_ws/src/locosim/robot_descriptions:/root/ros_ws/src:$ROS_PACKAGE_PATH
+```
+```bash
  export ROS_MASTER_URI=http://localhost:11311
  ```
 ```bash
