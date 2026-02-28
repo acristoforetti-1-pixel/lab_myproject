@@ -1,44 +1,10 @@
-<!--
-  /**
-   * @file pick_place_system.launch
-   * @brief Launch configuration for the complete pick-and-place system.
-   *
-   * This launch file starts all core components required for executing
-   * a pick-and-place task using the UR5 robot.
-   *
-   * It includes:
-   *  - robot_state_publisher for TF and kinematic state broadcasting
-   *  - motion_planning_node for trajectory execution
-   *  - task_planning_node for high-level pick-and-place logic
-   *
-   * The file defines all relevant motion, grasping, and placement
-   * parameters required for coordinated manipulation.
-   */
--->
 <launch>
-  <!--
-    /**
-     * @brief Publishes the robot kinematic state to TF.
-     *
-     * Reads joint states and broadcasts the full robot transform tree,
-     * enabling frame transformations for perception and planning modules.
-     */
-  -->
+
   <node pkg="robot_state_publisher"
         type="robot_state_publisher"
         name="robot_state_publisher"
         output="screen" />
-  <!--
-    /**
-     * @brief Low-level motion execution node.
-     *
-     * Responsible for receiving joint targets from the task planner
-     * and sending position commands to the joint controller.
-     *
-     * Handles trajectory timing, acknowledgement signaling,
-     * and optional command holding.
-     */
-  -->
+
   <node pkg="lab_myproject"
         type="motion_planning_node"
         name="motion_planning_node"
@@ -58,22 +24,7 @@
     <param name="hold_last_command" value="true"/>
     <param name="hold_rate_hz" value="30.0"/>
   </node>
-  <!--
-    /**
-     * @brief High-level task planner for pick-and-place execution.
-     *
-     * Receives object pose and orientation from the perception system,
-     * computes grasp and place poses, and generates motion targets
-     * for the motion planning node.
-     *
-     * Manages grasping sequence:
-     *  1. Pre-grasp approach
-     *  2. Grasp
-     *  3. Lift
-     *  4. Transport
-     *  5. Place
-     */
-  -->
+
   <node pkg="lab_myproject"
       type="task_planning_node"
       name="task_planning_node"
