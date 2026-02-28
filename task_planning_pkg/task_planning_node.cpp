@@ -98,6 +98,8 @@ public:
     pnh.param("z_grasp", z_grasp_off_, -0.016);
     pnh.param("z_lift",  z_lift_off_,  0.20);
 
+    pnh.param("yaw_gripper_offset_x1y1z2", yaw_gripper_offset_x1y1z2_, M_PI_2);
+    
     pnh.param("table_z", table_z_, -0.85);
     pnh.param("z_clear", z_clear_, 0.005);
 
@@ -792,8 +794,9 @@ private:
     const double drop_x_eff = drop_x_;
     const double drop_y_eff = dropYForClass(class_id);
 
-    // yaw di presa = yaw_obj + offset pinza (e snap 90)
-    const double yaw_grasp = snap90(wrapPi(yaw_obj + yaw_gripper_offset_));
+    double extra = 0.0;
+    if (Xc==1 && Yc==1 && Zc==2) extra = yaw_gripper_offset_x1y1z2_;
+    const double yaw_grasp = snap90(wrapPi(yaw_obj + yaw_gripper_offset_ + extra));
 
     const double yaw_place = 0.0;
 
@@ -871,14 +874,14 @@ private:
   std::string obj_name_topic_;
   ros::Subscriber sub_obj_name_;
   std::string last_obj_name_;
-
+  
   std::string obj_uid_topic_;
   ros::Subscriber sub_obj_uid_;
   std::string current_uid_;
   std::string last_uid_done_;
 
   std::string joint_limits_yaml_;
-
+  double yaw_gripper_offset_x1y1z2_ = M_PI_2;
   double min_xy_radius_ = 0.12;
   double ik_max_jump_ = 2.5;
 
